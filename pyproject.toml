@@ -8,11 +8,12 @@ version = "0.1.0"
 description = ""
 authors = [
     { name = "Yihuai Gao", email = "yihuai@stanford.edu" },
-    { name = "Jingyun Liu", email = "jeffliu0@stanford.edu" },
+    { name = "Jinyun Liu", email = "jeffliu0@stanford.edu" },
 ]
 dependencies = [
     "numpy",
-    "zarr>=2.16.0",
+    "zarr>=2.16.0,<3.0.0",
+    "loguru",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
