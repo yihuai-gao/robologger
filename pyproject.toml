@@ -14,6 +14,7 @@ dependencies = [
     "numpy",
     "zarr>=2.16.0,<3.0.0",
     "loguru",
+    "python>=3.8",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 import os
-from typing import Optional
+from typing import Any, Dict, Optional
 from loguru import Logger
 import zarr
 
 class BaseLogger(ABC):
-    def __init__(self, root_dir: str, project_name: str, task_name: str, run_name: str):
+    def __init__(self, root_dir: str, project_name: str, task_name: str, run_name: str, attr: Dict[str, Any]):
         self.root_dir: str = root_dir
         self.loguru_logger: Logger = Logger()
 
@@ -17,6 +17,7 @@ class BaseLogger(ABC):
         self.task_name: str = task_name
         self.run_name: str = run_name
         self.last_timestamp: float = 0.0
+        self.attr: dict = attr
 
         self.run_dir: str = os.path.join(self.root_dir, self.project_name, self.task_name, self.run_name)
         if not os.path.exists(self.run_dir):
@@ -26,7 +27,7 @@ class BaseLogger(ABC):
         self.episode_idx: int = -1
         self.zarr_group: Optional[zarr.Group] = None
 
-    def start_episode(self, attr: dict, episode_idx: Optional[int] = None):
+    def start_episode(self, episode_idx: Optional[int] = None):
         if episode_idx is not None:
             self.episode_idx = episode_idx
         else:
@@ -60,5 +61,6 @@ class BaseLogger(ABC):
         # Check whether the timestamp is monotonically increasing
         if timestamp <= self.last_timestamp:
             raise ValueError(f"Timestamp {timestamp} is not monotonically increasing. Last timestamp: {self.last_timestamp}")
+
         self.last_timestamp = timestamp
     

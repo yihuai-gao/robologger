@@ -4,8 +4,8 @@ import numpy as np
 import numpy.typing as npt
 
 class JointCtrlLogger(BaseLogger):
-    def __init__(self, root_dir: str, project_name: str, task_name: str, run_name: str):
-        super().__init__(root_dir, project_name, task_name, run_name)
+    def __init__(self, root_dir: str, project_name: str, task_name: str, run_name: str, attr: dict):
+        super().__init__(root_dir, project_name, task_name, run_name, attr)
 
     def _init_storage(self):
         # TODO (jinyun): initialize zarr store
