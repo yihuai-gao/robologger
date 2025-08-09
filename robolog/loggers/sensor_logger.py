@@ -1,8 +1,8 @@
 from robolog.loggers.base_logger import BaseLogger
 
 class SensorLogger(BaseLogger):
-    def __init__(self, root_dir: str, project_name: str, task_name: str, run_name: str, attr: dict):
-        super().__init__(root_dir, project_name, task_name, run_name, attr)
+    def __init__(self, name: str, root_dir: str, project_name: str, task_name: str, run_name: str, attr: dict):
+        super().__init__(name, root_dir, project_name, task_name, run_name, attr)
 
         # TODO: attr should include what kind of information is logged
 

@@ -3,9 +3,18 @@ import os
 from typing import Any, Dict, Optional
 from loguru import Logger
 import zarr
+from enum import Enum
+
+class LoggerType(Enum):
+    VIDEO = "video"
+    JOINT_CTRL = "joint_ctrl"
+    CARTESIAN_CTRL = "cartesian_ctrl"
+    SENSOR = "sensor"
+    GENERIC = "generic"
 
 class BaseLogger(ABC):
-    def __init__(self, root_dir: str, project_name: str, task_name: str, run_name: str, attr: Dict[str, Any]):
+    def __init__(self, name: str, root_dir: str, project_name: str, task_name: str, run_name: str, attr: Dict[str, Any]):
+        self.name: str = name
         self.root_dir: str = root_dir
         self.loguru_logger: Logger = Logger()
 
@@ -53,14 +62,6 @@ class BaseLogger(ABC):
     def _close_storage(self):
         ...
 
-    @abstractmethod
-    def log(self, *, timestamp: float):
-        if self.episode_idx == -1:
-            raise ValueError("Episode index is not set. Call start_episode() first.")
 
-        # Check whether the timestamp is monotonically increasing
-        if timestamp <= self.last_timestamp:
-            raise ValueError(f"Timestamp {timestamp} is not monotonically increasing. Last timestamp: {self.last_timestamp}")
 
-        self.last_timestamp = timestamp
     

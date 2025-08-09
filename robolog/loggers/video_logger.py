@@ -4,8 +4,8 @@ import numpy as np
 import numpy.typing as npt
 
 class VideoLogger(BaseLogger):
-    def __init__(self, root_dir: str, project_name: str, task_name: str, run_name: str, attr: dict):
-        super().__init__(root_dir, project_name, task_name, run_name, attr)
+    def __init__(self, name: str, root_dir: str, project_name: str, task_name: str, run_name: str, attr: dict):
+        super().__init__(name, root_dir, project_name, task_name, run_name, attr)
 
     def _init_storage(self):
         ...
@@ -15,13 +15,13 @@ class VideoLogger(BaseLogger):
         ...
         # Close ffmpeg
 
-    def log(
+    def log_frame(
         self,
         *,
+        camera_name: str,
         timestamp: float,
-        frame_dict: Dict[str, npt.NDArray[np.uint8]],
+        frame: npt.NDArray[np.uint8],
     ):
-        super().log(timestamp=timestamp)
         # TODO (jinyun): log video data
 
         # Check whether frame_dict has all the keys in self.attr
@@ -36,7 +36,7 @@ class VideoLogger(BaseLogger):
 
             # TODO: write frame to ffmpeg
 
-            
+
 
 
         
