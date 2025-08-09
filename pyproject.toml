@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robolog"
+version = "0.1.0"
+description = ""
+authors = [
+    { name = "Yihuai Gao", email = "yihuai@stanford.edu" },
+    { name = "Jingyun Liu", email = "jeffliu0@stanford.edu" },
+]
+dependencies = [
+    "numpy",
+    "zarr>=2.16.0",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "robolog*",
+]
+
+[project.urls]
+Homepage = "https://github.com/yihuai-gao/robolog"
