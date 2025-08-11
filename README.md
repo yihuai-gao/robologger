@@ -1,5 +1,6 @@
 # Storage data format
 
+```
 project_name/
 ├── task_name/
 │   └── run_name/
@@ -39,3 +40,4 @@ project_name/
 │           ├── right_gripper_tactile.zarr/
 │           ├── left_... (similar structure)
 │           └── head_... (similar structure)
+```
