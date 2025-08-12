@@ -1,9 +1,26 @@
 from abc import ABC, abstractmethod
 import os
+import sys
 from typing import Any, Dict, Optional
-from loguru import Logger
+from loguru import logger
 import zarr
 from enum import Enum
+
+# global flag to ensure stdout logger only setup once
+_logging_configured = False
+
+def setup_logging(level: str = "DEBUG", format_str: str = None, colorize: bool = True):
+    """Setup custom loguru logging configuration."""
+    global _logging_configured
+    if _logging_configured:
+        return
+    
+    if format_str is None:
+        format_str = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+    
+    logger.remove()  # remove default handler and add custom logger
+    logger.add(sys.stdout, format=format_str, colorize=colorize, level=level)
+    _logging_configured = True
 
 class LoggerType(Enum):
     VIDEO = "video"
@@ -24,10 +41,11 @@ class BaseLogger(ABC):
     ):
         self.name: str = name
         self.root_dir: str = root_dir
-        self.loguru_logger: Logger = Logger()
+
+        setup_logging() # stdout logging
 
         if not os.path.exists(self.root_dir):
-            self.loguru_logger.info(f"Creating root directory: {self.root_dir}")
+            logger.info(f"Creating root directory: {self.root_dir}")
             os.makedirs(self.root_dir)
 
         self.project_name: str = project_name
@@ -38,7 +56,7 @@ class BaseLogger(ABC):
 
         self.run_dir: str = os.path.join(self.root_dir, self.project_name, self.task_name, self.run_name)
         if not os.path.exists(self.run_dir):
-            self.loguru_logger.info(f"Creating run directory: {self.run_dir}")
+            logger.info(f"Creating run directory: {self.run_dir}")
             os.makedirs(self.run_dir)
 
         self.episode_idx: int = -1
@@ -49,20 +67,20 @@ class BaseLogger(ABC):
             self.episode_idx = episode_idx
         else:
             self.episode_idx = self._get_next_episode_idx()
-        self.loguru_logger.info(f"Starting episode {self.episode_idx}")
+        logger.info(f"Starting episode {self.episode_idx}")
 
         self._init_storage()
         self._set_attributes()
 
     def end_episode(self):
-        self.loguru_logger.info(f"Ending episode {self.episode_idx}")
+        logger.info(f"Ending episode {self.episode_idx}")
         self._close_storage()
         self.episode_idx = -1
 
     def _set_attributes(self):
         """Set attributes on the zarr group"""
         assert self.zarr_group is not None, "Zarr group is not initialized"
-        self.loguru_logger.info(f"Setting attributes on the zarr group: {self.attr}")
+        logger.info(f"Setting attributes on the zarr group: {self.attr}")
         for key, value in self.attr.items():
             self.zarr_group.attrs[key] = value
                 
