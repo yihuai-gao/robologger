@@ -9,7 +9,7 @@ from enum import Enum
 # global flag to ensure stdout logger only setup once
 _logging_configured = False
 
-def setup_logging(level: str = "DEBUG", format_str: str = None, colorize: bool = True):
+def setup_logging(level: str = "INFO", format_str: str = None, colorize: bool = True):
     """Setup custom loguru logging configuration."""
     global _logging_configured
     if _logging_configured:
