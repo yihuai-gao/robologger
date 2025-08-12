@@ -6,9 +6,10 @@ project_name/
 │   └── run_name/
 │       └── episode_idx/
 │           ├── right_arm.zarr/
-│           │   ├── timestamp
+│           │   ├── state_timestamp
 │           │   ├── state_pos_xyz
 │           │   ├── state_quat_wxyz
+│           │   ├── target_timestamp
 │           │   ├── target_pos_xyz
 │           │   ├── target_quat_wxyz
 │           │   └── attr
