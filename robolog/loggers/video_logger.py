@@ -8,7 +8,7 @@ import numpy.typing as npt
 import zarr
 from loguru import logger
 
-from huecodec import codec as hc
+from robolog.utils.huecodec import depth2rgb, EncoderOpts
 from robolog.loggers.base_logger import BaseLogger
 
 class VideoLogger(BaseLogger):
@@ -32,7 +32,7 @@ class VideoLogger(BaseLogger):
         # TODO: double check mode
         self.depth_enc_mode = depth_enc_mode
         self.depth_range = depth_range
-        self.hue_opts = hc.EncoderOpts(use_lut=True)
+        self.hue_opts = EncoderOpts(use_lut=True)
 
     def _validate_camera_config(self, attr: dict) -> None:
         """Validate camera config"""
@@ -135,7 +135,7 @@ class VideoLogger(BaseLogger):
         """Encode depth frame to RGB using the same encoding as iPhone implementation"""
         if self.depth_enc_mode == "hue_codec":
             depth_clipped = np.clip(depth_frame, self.depth_range[0], self.depth_range[1])
-            depth_rgb_float = hc.depth2rgb(
+            depth_rgb_float = depth2rgb(
                 depth_clipped, self.depth_range, inv_depth=False, opts=self.hue_opts
             )
             depth_rgb_uint8 = (depth_rgb_float * 255).astype(np.uint8)
@@ -143,7 +143,7 @@ class VideoLogger(BaseLogger):
 
         elif self.depth_enc_mode == "hue_codec_inv":
             depth_clipped = np.clip(depth_frame, self.depth_range[0], self.depth_range[1])
-            depth_rgb_float = hc.depth2rgb(
+            depth_rgb_float = depth2rgb(
                 depth_clipped, self.depth_range, inv_depth=True, opts=self.hue_opts
             )
             depth_rgb_uint8 = (depth_rgb_float * 255).astype(np.uint8)
@@ -202,7 +202,11 @@ class VideoLogger(BaseLogger):
             raise ValueError(f"Unknown camera type: {config['type']}")
 
         timestamp_dataset = self.zarr_group[f"{camera_name}_timestamps"]
-        timestamp_dataset.append([timestamp])
+        assert isinstance(timestamp_dataset, zarr.Array), "Timestamp dataset must be a zarr.Array"
+        original_shape = timestamp_dataset.shape
+        new_shape = (original_shape[0] + 1, *original_shape[1:])
+        timestamp_dataset.resize(new_shape)
+        timestamp_dataset[-1] = timestamp
 
         if camera_name in self.ffmpeg_processes:
             process = self.ffmpeg_processes[camera_name]

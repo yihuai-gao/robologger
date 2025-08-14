@@ -1,3 +1,0 @@
-[submodule "third_party/hue-depth-encoding"]
-	path = third_party/hue-depth-encoding
-	url = https://github.com/Neopoleon/hue-depth-encoding

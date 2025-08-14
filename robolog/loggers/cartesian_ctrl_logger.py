@@ -111,6 +111,7 @@ class CartesianCtrlLogger(BaseLogger):
             
             for dataset_name in ["state_timestamps", "state_pos_xyz", "state_quat_wxyz"]:
                 dataset = self.zarr_group[dataset_name]
+                assert isinstance(dataset, zarr.Array), "Dataset must be a zarr.Array"
                 original_shape = dataset.shape
                 new_shape = (original_shape[0] + 1, *original_shape[1:])
                 dataset.resize(new_shape)
@@ -150,6 +151,7 @@ class CartesianCtrlLogger(BaseLogger):
             
             for dataset_name in ["target_timestamps", "target_pos_xyz", "target_quat_wxyz"]:
                 dataset = self.zarr_group[dataset_name]
+                assert isinstance(dataset, zarr.Array), "Dataset must be a zarr.Array"
                 original_shape = dataset.shape
                 new_shape = (original_shape[0] + 1, *original_shape[1:])
                 dataset.resize(new_shape)
