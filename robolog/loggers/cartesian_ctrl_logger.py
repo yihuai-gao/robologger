@@ -39,7 +39,7 @@ class CartesianCtrlLogger(BaseLogger):
                 "state_timestamps",
                 shape=(0,),
                 chunks=(1000,),
-                dtype=np.float64,
+                dtype=np.float64, # TODO: check float32 or float64
             )
             self.zarr_group.create_dataset(
                 "target_timestamps",
