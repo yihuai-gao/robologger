@@ -20,7 +20,8 @@ project_name/
 │           │   ├── state_joint_vel (optional)
 │           │   └── state_joint_torque (optional)
 │           ├── right_wrist_camera.zarr/
-│           │   ├── timestamp
+│           │   ├── camera_name_1_timestamps
+│           │   ├── camera_name_2_timestamps
 │           │   ├── camera_name_1.mp4
 │           │   ├── camera_name_2.mp4
 │           │   └── attr/
