@@ -67,6 +67,7 @@ class BaseLogger(ABC):
             self.episode_idx = episode_idx
         else:
             self.episode_idx = self._get_next_episode_idx()
+        assert self.episode_idx >= 0, "Episode index must be non-negative"
         logger.info(f"Starting episode {self.episode_idx}")
 
         self._init_storage()
