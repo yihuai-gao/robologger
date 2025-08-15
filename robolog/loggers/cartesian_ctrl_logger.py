@@ -100,7 +100,7 @@ class CartesianCtrlLogger(BaseLogger):
         """Log robot state (current pose)"""
         if self.zarr_group is None:
             logger.warning(f"[{self.name}] Cannot log state: storage not initialized")
-            return
+            raise ValueError("Storage not initialized. Please call start_episode() before logging states to make sure the zarr group is initialized.")
         
         try:
             # validate inputs
@@ -110,8 +110,11 @@ class CartesianCtrlLogger(BaseLogger):
                 raise ValueError(f"Expected quaternion (w,x,y,z), got {len(state_quat_wxyz)}")
             
             for dataset_name in ["state_timestamps", "state_pos_xyz", "state_quat_wxyz"]:
+                assert dataset_name in self.zarr_group, f"Dataset {dataset_name} not found in zarr group"
+                
                 dataset = self.zarr_group[dataset_name]
-                assert isinstance(dataset, zarr.Array), "Dataset must be a zarr.Array"
+                assert isinstance(dataset, zarr.Array), f"Dataset {dataset_name} must be a zarr.Array"
+                
                 original_shape = dataset.shape
                 new_shape = (original_shape[0] + 1, *original_shape[1:])
                 dataset.resize(new_shape)
@@ -140,7 +143,7 @@ class CartesianCtrlLogger(BaseLogger):
         """Log robot target (desired pose)"""
         if self.zarr_group is None:
             logger.warning(f"[{self.name}] Cannot log target: storage not initialized")
-            return
+            raise ValueError("Storage not initialized. Please call start_episode() before logging targets to make sure the zarr group is initialized.")
         
         try:
             # validate inputs
@@ -150,8 +153,11 @@ class CartesianCtrlLogger(BaseLogger):
                 raise ValueError(f"Expected quaternion (w,x,y,z), got {len(target_quat_wxyz)}")
             
             for dataset_name in ["target_timestamps", "target_pos_xyz", "target_quat_wxyz"]:
+                assert dataset_name in self.zarr_group, f"Dataset {dataset_name} not found in zarr group"
+                
                 dataset = self.zarr_group[dataset_name]
-                assert isinstance(dataset, zarr.Array), "Dataset must be a zarr.Array"
+                assert isinstance(dataset, zarr.Array), f"Dataset {dataset_name} must be a zarr.Array"
+
                 original_shape = dataset.shape
                 new_shape = (original_shape[0] + 1, *original_shape[1:])
                 dataset.resize(new_shape)
@@ -171,30 +177,30 @@ class CartesianCtrlLogger(BaseLogger):
             raise
 
     def log_state_and_target(
-          self,
-          *,
-          state_timestamp: float,
-          state_pos_xyz: npt.NDArray[np.float32],
-          state_quat_wxyz: npt.NDArray[np.float32],
-          target_timestamp: float,
-          target_pos_xyz: npt.NDArray[np.float32],
-          target_quat_wxyz: npt.NDArray[np.float32],
-      ):
-          """Convenience method to log both state and target in one call"""
-          try:
-              self.log_state(
-                  state_timestamp=state_timestamp,
-                  state_pos_xyz=state_pos_xyz,
-                  state_quat_wxyz=state_quat_wxyz
-              )
-              self.log_target(
-                  target_timestamp=target_timestamp,
-                  target_pos_xyz=target_pos_xyz,
-                  target_quat_wxyz=target_quat_wxyz
-              )
-          except Exception as e:
-              logger.error(f"[{self.name}] Failed to log both state and target: {e}")
-              raise
+        self,
+        *,
+        state_timestamp: float,
+        state_pos_xyz: npt.NDArray[np.float32],
+        state_quat_wxyz: npt.NDArray[np.float32],
+        target_timestamp: float,
+        target_pos_xyz: npt.NDArray[np.float32],
+        target_quat_wxyz: npt.NDArray[np.float32],
+    ):
+        """Convenience method to log both state and target in one call"""
+        try:
+            self.log_state(
+                state_timestamp=state_timestamp,
+                state_pos_xyz=state_pos_xyz,
+                state_quat_wxyz=state_quat_wxyz
+            )
+            self.log_target(
+                target_timestamp=target_timestamp,
+                target_pos_xyz=target_pos_xyz,
+                target_quat_wxyz=target_quat_wxyz
+            )
+        except Exception as e:
+            logger.error(f"[{self.name}] Failed to log both state and target: {e}")
+            raise
 
     def get_stats(self) -> Dict[str, Any]:
           """Utility function to get logging statistics"""
