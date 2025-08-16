@@ -10,13 +10,10 @@ class CartesianCtrlLogger(BaseLogger):
     def __init__(
         self,
         name: str,
-        root_dir: str,
-        project_name: str,
-        task_name: str,
-        run_name: str,
+        endpoint: str,
         attr: Dict[str, Any],
     ):
-        super().__init__(name, root_dir, project_name, task_name, run_name, attr)
+        super().__init__(name, endpoint, attr)
         
         self.state_count = 0
         self.target_count = 0
