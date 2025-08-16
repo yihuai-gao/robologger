@@ -15,15 +15,11 @@ class VideoLogger(BaseLogger):
     def __init__(
         self,
         name: str,
-        root_dir: str,
-        project_name: str,
-        task_name: str,
-        run_name: str,
         attr: dict,
         depth_enc_mode: str = "hue_codec",
         depth_range: tuple[float, float] = (0.02, 4.0),
     ):
-        super().__init__(name, root_dir, project_name, task_name, run_name, attr)
+        super().__init__(name, attr)
         self.ffmpeg_processes: Dict[str, subprocess.Popen] = {}
 
         self._validate_camera_config(attr)

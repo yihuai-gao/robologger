@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from loguru import logger
 import zarr
 from enum import Enum
+import robotmq
 
 # global flag to ensure stdout logger only setup once
 _logging_configured = False
@@ -33,36 +34,15 @@ class BaseLogger(ABC):
     def __init__(
         self,
         name: str,
-        root_dir: str,
-        project_name: str,
-        task_name: str,
-        run_name: str,
         attr: Dict[str, Any],
     ):
         self.name: str = name
-        self.root_dir: str = root_dir
-
-        setup_logging() # stdout logging
-
-        if not os.path.exists(self.root_dir):
-            logger.info(f"Creating root directory: {self.root_dir}")
-            os.makedirs(self.root_dir)
-
-        self.project_name: str = project_name
-        self.task_name: str = task_name
-        self.run_name: str = run_name
         self.last_timestamp: float = 0.0
         self.attr: dict = attr
 
-        self.run_dir: str = os.path.join(self.root_dir, self.project_name, self.task_name, self.run_name)
-        if not os.path.exists(self.run_dir):
-            logger.info(f"Creating run directory: {self.run_dir}")
-            os.makedirs(self.run_dir)
-
-        self.episode_idx: int = -1
         self.zarr_group: Optional[zarr.Group] = None
 
-    def start_episode(self, episode_idx: Optional[int] = None):
+    def _start_episode(self):
         if episode_idx is not None:
             self.episode_idx = episode_idx
         else:
@@ -73,7 +53,7 @@ class BaseLogger(ABC):
         self._init_storage()
         self._set_attributes()
 
-    def end_episode(self):
+    def _end_episode(self):
         logger.info(f"Ending episode {self.episode_idx}")
         self._close_storage()
         self.episode_idx = -1
