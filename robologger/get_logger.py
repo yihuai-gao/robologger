@@ -1,6 +1,6 @@
 # Multiton pattern for loggers
 from typing import Optional
-from robolog.loggers.base_logger import LoggerType
+from robologger.loggers.base_logger import LoggerType
 
 def get_logger(
     name: str,

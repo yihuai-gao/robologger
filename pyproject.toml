@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 requires-python = ">=3.8"
-name = "robolog"
+name = "robologger"
 version = "0.1.0"
 description = ""
 authors = [
@@ -19,7 +19,7 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["robolog*"]
+include = ["robologger*"]
 
 
 [project.urls]

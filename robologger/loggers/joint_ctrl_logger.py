@@ -1,5 +1,5 @@
 from typing import Optional
-from robolog.loggers.base_logger import BaseLogger
+from robologger.loggers.base_logger import BaseLogger
 import numpy as np
 import numpy.typing as npt
 

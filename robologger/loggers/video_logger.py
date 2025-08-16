@@ -8,8 +8,8 @@ import numpy.typing as npt
 import zarr
 from loguru import logger
 
-from robolog.utils.huecodec import depth2rgb, EncoderOpts
-from robolog.loggers.base_logger import BaseLogger
+from robologger.utils.huecodec import depth2rgb, EncoderOpts
+from robologger.loggers.base_logger import BaseLogger
 
 class VideoLogger(BaseLogger):
     def __init__(

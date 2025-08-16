@@ -1,6 +1,6 @@
 import os
 from loguru import logger
-from robolog.loggers.base_logger import BaseLogger
+from robologger.loggers.base_logger import BaseLogger
 
 class MainLogger(BaseLogger):
     def __init__(
