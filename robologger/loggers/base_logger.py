@@ -7,21 +7,7 @@ import zarr
 from enum import Enum
 import robotmq
 from robotmq import RMQServer, deserialize, serialize
-# global flag to ensure stdout logger only setup once
-_logging_configured = False
-
-def setup_logging(level: str = "INFO", format_str: Optional[str] = None, colorize: bool = True):
-    """Setup custom loguru logging configuration."""
-    global _logging_configured
-    if _logging_configured:
-        return
-    
-    if format_str is None:
-        format_str = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
-    
-    logger.remove()  # remove default handler and add custom logger
-    logger.add(sys.stdout, format=format_str, colorize=colorize, level=level)
-    _logging_configured = True
+from robologger.utils.stdout_setup import setup_logging
 
 class LoggerType(Enum):
     VIDEO = "video"
@@ -37,6 +23,8 @@ class BaseLogger(ABC):
         endpoint: str, # "tcp://0.0.0.0:55555"
         attr: Dict[str, Any],
     ):
+        setup_logging()
+        
         self.name: str = name
         self.last_timestamp: float = 0.0
         self.attr: Dict[str, Any] = attr

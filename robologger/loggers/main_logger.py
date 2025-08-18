@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 from robotmq import RMQClient, deserialize, serialize
 from robologger.loggers.base_logger import BaseLogger
+from robologger.utils.stdout_setup import setup_logging
 
 class MainLogger:
     def __init__(
@@ -12,10 +13,11 @@ class MainLogger:
         project_name: str,
         task_name: str,
         run_name: str,
-        logger_endpoints: Dict[str, str],
+        logger_endpoints: Dict[str, str], # {logger_name: logger_endpoint}
         # attr: dict,
     ):
-
+        setup_logging()
+        
         self.root_dir = root_dir
         self.project_name = project_name
         self.task_name = task_name
@@ -89,6 +91,7 @@ class MainLogger:
                     episode_num = int(item.split("_")[1])
                     existing_episodes.append(episode_num)
                 except (IndexError, ValueError):
+                    logger.warning(f"Invalid episode directory name: {item}")
                     continue
         
         return max(existing_episodes, default=-1) + 1
