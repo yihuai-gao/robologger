@@ -20,7 +20,9 @@ class CartesianCtrlLogger(BaseLogger):
 
     def _init_storage(self):
         """Initialize zarr storage for cartesian control data"""
-        episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}") # pad with zeros to 6 digits
+        episode_dir = self.episode_dir
+        if episode_dir is None:
+            raise RuntimeError("episode_dir not set. start_recording() must be called first.")
         if not os.path.exists(episode_dir):
             os.makedirs(episode_dir)
             logger.info(f"[{self.name}] Created episode directory: {episode_dir}")
@@ -202,7 +204,7 @@ class CartesianCtrlLogger(BaseLogger):
     def get_stats(self) -> Dict[str, Any]:
           """Utility function to get logging statistics"""
           stats = {
-              "episode_idx": self.episode_idx,
+              "episode_dir": self.episode_dir,
               "state_count": self.state_count,
               "target_count": self.target_count,
               "last_timestamp": self.last_timestamp,

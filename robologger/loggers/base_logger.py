@@ -35,6 +35,7 @@ class BaseLogger(ABC):
         self.rmq_server.add_topic(topic="info", message_remaining_time_s=10.0)
 
         self._is_recording: bool = False
+        self.episode_dir: Optional[str] = None
         self.rmq_server.put_data(topic="info", data=serialize({"name": self.name, "attr": self.attr}))
 
     @property
@@ -60,22 +61,16 @@ class BaseLogger(ABC):
 
     def start_recording(self, episode_dir: str):
         self._is_recording = True
-
-        if episode_idx is not None:
-            self.episode_idx = episode_idx
-        else:
-            self.episode_idx = self._get_next_episode_idx()
-        assert self.episode_idx >= 0, "Episode index must be non-negative"
-        logger.info(f"Starting episode {self.episode_idx}")
+        self.episode_dir = episode_dir
+        logger.info(f"Starting recording in episode directory: {self.episode_dir}")
 
         self._init_storage()
         self._set_attributes()
 
     def stop_recording(self):
         self._is_recording = False
-        logger.info(f"Ending episode {self.episode_idx}")
+        logger.info(f"Stopping recording: {self.episode_dir}")
         self._close_storage()
-        self.episode_idx = -1
 
     def _set_attributes(self):
         """Set attributes on the zarr group"""

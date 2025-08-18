@@ -15,11 +15,12 @@ class VideoLogger(BaseLogger):
     def __init__(
         self,
         name: str,
+        endpoint: str,
         attr: dict,
         depth_enc_mode: str = "hue_codec",
         depth_range: tuple[float, float] = (0.02, 4.0),
     ):
-        super().__init__(name, attr)
+        super().__init__(name, endpoint, attr)
         self.ffmpeg_processes: Dict[str, subprocess.Popen] = {}
 
         self._validate_camera_config(attr)
@@ -50,12 +51,9 @@ class VideoLogger(BaseLogger):
 
     def _init_storage(self):
         """Initialize storage"""
-        if not hasattr(self, 'run_dir') or not self.run_dir:
-            raise RuntimeError("BaseLogger not properly initialized: missing run_dir")
-        if not hasattr(self, 'episode_idx') or self.episode_idx < 0:
-            raise RuntimeError("BaseLogger not properly initialized: invalid episode_idx")
-
-        episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}") # pad with zeros to 6 digits
+        episode_dir = self.episode_dir
+        if episode_dir is None:
+            raise RuntimeError("episode_dir not set. start_recording() must be called first.")
         if not os.path.exists(episode_dir):
             os.makedirs(episode_dir)
             logger.info(f"[{self.name}] Created episode directory: {episode_dir}")
