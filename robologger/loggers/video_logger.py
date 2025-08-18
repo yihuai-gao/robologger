@@ -17,16 +17,12 @@ class VideoLogger(BaseLogger):
         name: str,
         endpoint: str,
         attr: Dict[str, Any],
-        depth_enc_mode: str = "hue_codec",
-        depth_range: tuple[float, float] = (0.02, 4.0),
+        depth_range: tuple[float, float] = (0.0, 4.0),
     ):
         super().__init__(name, endpoint, attr)
         self.ffmpeg_processes: Dict[str, subprocess.Popen[bytes]] = {}
 
         self._validate_camera_config(attr)
-
-        assert depth_enc_mode in ["gray_scale", "hue_codec", "hue_codec_inv"]
-        self.depth_enc_mode = depth_enc_mode
         self.depth_range = depth_range
         self.hue_opts = EncoderOpts(use_lut=True)
 
@@ -136,36 +132,20 @@ class VideoLogger(BaseLogger):
 
     def _encode_depth_to_rgb(self, depth_frame: npt.NDArray[np.float32]) -> npt.NDArray[np.uint8]:
         """Encode depth frame to RGB using the same encoding as iPhone implementation"""
-        if self.depth_enc_mode == "hue_codec":
-            depth_clipped = np.clip(depth_frame, self.depth_range[0], self.depth_range[1])
-            depth_rgb_float = depth2rgb(
-                depth_clipped, self.depth_range, inv_depth=False, opts=self.hue_opts
-            )
-            depth_rgb_uint8 = (depth_rgb_float * 255).astype(np.uint8)
-            return depth_rgb_uint8  # RGB
-
-        elif self.depth_enc_mode == "hue_codec_inv":
-            depth_clipped = np.clip(depth_frame, self.depth_range[0], self.depth_range[1])
-            depth_rgb_float = depth2rgb(
-                depth_clipped, self.depth_range, inv_depth=True, opts=self.hue_opts
-            )
-            depth_rgb_uint8 = (depth_rgb_float * 255).astype(np.uint8)
-            return depth_rgb_uint8  # RGB
-
-        elif self.depth_enc_mode == "gray_scale":
-            depth_normalized = np.clip(depth_frame / self.depth_range[1], 0, 1)
-            depth_uint8 = (depth_normalized * 255).astype(np.uint8)
-            return depth_uint8[..., np.newaxis].repeat(3, axis=2)  # grayscale is same in RGB/BGR
-
-        else:
-            raise ValueError(f"Invalid depth encoding mode: {self.depth_enc_mode}")
+        depth_clipped = np.clip(depth_frame, self.depth_range[0], self.depth_range[1])
+        depth_logged = np.log(1 + depth_clipped) / np.log(1 + self.depth_range[1])
+        depth_rgb_float = depth2rgb(
+            depth_logged, self.depth_range, inv_depth=False, opts=self.hue_opts
+        )
+        depth_rgb_uint8 = (depth_rgb_float * 255).astype(np.uint8)
+        return depth_rgb_uint8  # RGB
 
     def log_frame(
         self,
         *,
         camera_name: str,
         timestamp: float,
-        frame: Union[npt.NDArray[np.uint8], npt.NDArray[np.float32]],  # RGB uint8 or depth float32
+        frame: npt.NDArray[Any],  # RGB uint8 or depth float32
     ):
         if self.zarr_group is None:
             raise ValueError("Storage not initialized. Please call start_episode() before logging frames to make sure the zarr group is initialized.")
@@ -191,7 +171,7 @@ class VideoLogger(BaseLogger):
         elif config["type"] == "depth":
             expected_shape = (config["height"], config["width"])
             
-            assert frame.dtype == np.float32, f"Depth frame must be float32, got {frame.dtype}"
+            assert frame.dtype in [np.float16, np.float32, np.float64], f"Depth frame must be float16 or float32 or float64, got {frame.dtype}"
             assert len(frame.shape) == 2, f"Depth frame must be HW (2D), got shape {frame.shape}"
             
             if frame.shape != expected_shape:

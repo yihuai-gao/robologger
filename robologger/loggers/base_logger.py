@@ -59,7 +59,7 @@ class BaseLogger(ABC):
                 self.start_recording(command["episode_dir"])
             elif command["type"] == "stop":
                 if not self._is_recording:
-                    raise RuntimeError("Not recording, but received stop command")
+                    logger.error("Not recording, but received stop command")
                 self.stop_recording()
             else:
                 raise ValueError(f"Unknown command type: {command['type']}, must be 'start' or 'end'")

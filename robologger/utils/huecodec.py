@@ -28,6 +28,17 @@ from contextlib import contextmanager
 # import matplotlib.pyplot as plt
 import numpy as np
 
+def depth2logrgb(depth: np.ndarray, zrange: tuple[float, float], opts: EncoderOpts = None):
+    opts = opts or _default_opts
+    depth_clipped = np.clip(depth, zrange[0], zrange[1])
+    depth_logged = np.log(1 + depth_clipped) / np.log(1 + zrange[1])
+    return depth2rgb(depth_logged, zrange, opts=opts)
+
+def logrgb2depth(rgb: np.ndarray, zrange: tuple[float, float], opts: EncoderOpts = None):
+    opts = opts or _default_opts
+    depth_logged = rgb2depth(rgb, zrange, opts=opts)
+    depth = np.exp(depth_logged * np.log(1 + zrange[1])) - 1
+    return depth
 
 def rgb2hsv(
     rgb: np.ndarray, *, output: np.ndarray = None, ftype: np.dtype = np.float32
