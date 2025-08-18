@@ -77,7 +77,7 @@ class VideoLogger(BaseLogger):
         
         try:
             for cam_name, config in self.attr["camera_configs"].items():
-                mp4_file_path = os.path.join(episode_dir, f"{cam_name}.mp4")
+                mp4_file_path = os.path.join(zarr_path, f"{cam_name}.mp4")
                 ffmpeg_cmd = [
                       "ffmpeg",
                       "-y",
