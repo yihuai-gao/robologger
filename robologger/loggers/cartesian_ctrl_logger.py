@@ -175,31 +175,6 @@ class CartesianCtrlLogger(BaseLogger):
             logger.error(f"[{self.name}] Failed to log target: {e}")
             raise
 
-    def log_state_and_target(
-        self,
-        *,
-        state_timestamp: float,
-        state_pos_xyz: npt.NDArray[np.float32],
-        state_quat_wxyz: npt.NDArray[np.float32],
-        target_timestamp: float,
-        target_pos_xyz: npt.NDArray[np.float32],
-        target_quat_wxyz: npt.NDArray[np.float32],
-    ):
-        """Convenience method to log both state and target in one call"""
-        try:
-            self.log_state(
-                state_timestamp=state_timestamp,
-                state_pos_xyz=state_pos_xyz,
-                state_quat_wxyz=state_quat_wxyz
-            )
-            self.log_target(
-                target_timestamp=target_timestamp,
-                target_pos_xyz=target_pos_xyz,
-                target_quat_wxyz=target_quat_wxyz
-            )
-        except Exception as e:
-            logger.error(f"[{self.name}] Failed to log both state and target: {e}")
-            raise
 
     def get_stats(self) -> Dict[str, Any]:
           """Utility function to get logging statistics"""

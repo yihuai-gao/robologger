@@ -16,12 +16,12 @@ class VideoLogger(BaseLogger):
         self,
         name: str,
         endpoint: str,
-        attr: dict,
+        attr: Dict[str, Any],
         depth_enc_mode: str = "hue_codec",
         depth_range: tuple[float, float] = (0.02, 4.0),
     ):
         super().__init__(name, endpoint, attr)
-        self.ffmpeg_processes: Dict[str, subprocess.Popen] = {}
+        self.ffmpeg_processes: Dict[str, subprocess.Popen[bytes]] = {}
 
         self._validate_camera_config(attr)
 
@@ -30,17 +30,19 @@ class VideoLogger(BaseLogger):
         self.depth_range = depth_range
         self.hue_opts = EncoderOpts(use_lut=True)
 
-    def _validate_camera_config(self, attr: dict) -> None:
+        
+
+    def _validate_camera_config(self, attr: Dict[str, Any]) -> None:
         """Validate camera config"""
-        if "camera_config" not in attr:
-            raise ValueError("Missing 'camera_config' in attr")
-        if not isinstance(attr["camera_config"], dict):
-            raise ValueError("'camera_config' must be a dictionary")
-        if not attr["camera_config"]:
-            raise ValueError("'camera_config' cannot be empty")
+        if "camera_configs" not in attr:
+            raise ValueError("Missing 'camera_configs' in attr")
+        if not isinstance(attr["camera_configs"], dict):
+            raise ValueError("'camera_configs' must be a dictionary")
+        if not attr["camera_configs"]:
+            raise ValueError("'camera_configs' cannot be empty")
 
         required_keys = ["width", "height", "fps", "type"]
-        for cam_name, config in attr["camera_config"].items():
+        for cam_name, config in attr["camera_configs"].items():
             if not isinstance(config, dict):
                 raise ValueError(f"Camera config for '{cam_name}' must be a dictionary")
             for key in required_keys:
@@ -64,7 +66,7 @@ class VideoLogger(BaseLogger):
 
         # timestamp arrays for each camera
         # NOTE: camera_config is stored in attr as a (nested) dict
-        for cam_name in self.attr["camera_config"].keys():
+        for cam_name in self.attr["camera_configs"].keys():
             self.zarr_group.create_dataset(
                 f"{cam_name}_timestamps",
                 shape=(0,),
@@ -74,7 +76,7 @@ class VideoLogger(BaseLogger):
             logger.info(f"[{self.name}] Created timestamp array for camera: {cam_name}")
         
         try:
-            for cam_name, config in self.attr["camera_config"].items():
+            for cam_name, config in self.attr["camera_configs"].items():
                 mp4_file_path = os.path.join(episode_dir, f"{cam_name}.mp4")
                 ffmpeg_cmd = [
                       "ffmpeg",
@@ -170,10 +172,10 @@ class VideoLogger(BaseLogger):
         if self.zarr_group is None:
             raise ValueError("Storage not initialized. Please call start_episode() before logging frames to make sure the zarr group is initialized.")
         
-        if camera_name not in self.attr["camera_config"]:
+        if camera_name not in self.attr["camera_configs"]:
             raise ValueError(f"Camera '{camera_name}' not found in camera config")
         
-        config: dict = self.attr["camera_config"][camera_name]
+        config: dict = self.attr["camera_configs"][camera_name]
 
         if config["type"] == "rgb":
             expected_shape = (config["height"], config["width"], 3)
@@ -238,7 +240,7 @@ class VideoLogger(BaseLogger):
         """
         # Validate that all frame_dict keys exist in camera_config
         for cam_name in frame_dict.keys():
-            if cam_name not in self.attr["camera_config"]:
+            if cam_name not in self.attr["camera_configs"]:
                 raise ValueError(f"Camera '{cam_name}' not found in camera config")
         
         # log_frame will handle all validation, so just call it
