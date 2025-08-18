@@ -56,7 +56,7 @@ class MainLogger:
         assert self.episode_idx >= 0, "Episode index must be non-negative"
         logger.info(f"Starting episode {self.episode_idx}")
 
-        episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx}")
+        episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}")
         if not os.path.exists(episode_dir):
             os.makedirs(episode_dir)
 
