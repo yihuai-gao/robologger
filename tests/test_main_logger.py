@@ -13,8 +13,11 @@ logger = MainLogger(
     },
 )
 
-logger.start_recording()
+while True:
+    logger.start_recording()
 
-time.sleep(10)
+    time.sleep(10)
 
-logger.stop_recording()
+    logger.stop_recording()
+    
+    time.sleep(0.1)
