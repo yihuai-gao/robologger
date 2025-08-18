@@ -19,6 +19,9 @@ class MainLogger:
     ):
         setup_logging()
         
+        if root_dir[0] != "/":
+            root_dir = f"{os.getcwd()}/{root_dir}"
+        logger.info(f"Root directory: {root_dir}")
         self.root_dir = root_dir
         self.project_name = project_name
         self.task_name = task_name
