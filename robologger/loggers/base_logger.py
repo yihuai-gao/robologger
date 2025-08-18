@@ -8,6 +8,7 @@ from enum import Enum
 import robotmq
 from robotmq import RMQServer, deserialize, serialize
 from robologger.utils.stdout_setup import setup_logging
+from atexit import register
 
 class LoggerType(Enum):
     VIDEO = "video"
@@ -37,6 +38,12 @@ class BaseLogger(ABC):
         self._is_recording: bool = False
         self.episode_dir: Optional[str] = None
         self.rmq_server.put_data(topic="info", data=serialize({"name": self.name, "attr": self.attr}))
+
+        register(self.on_exit)
+
+    def on_exit(self):
+        if self._is_recording:
+            self.stop_recording()
 
     @property
     def is_recording(self) -> bool:

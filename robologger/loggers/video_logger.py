@@ -30,8 +30,6 @@ class VideoLogger(BaseLogger):
         self.depth_range = depth_range
         self.hue_opts = EncoderOpts(use_lut=True)
 
-        
-
     def _validate_camera_config(self, attr: Dict[str, Any]) -> None:
         """Validate camera config"""
         if "camera_configs" not in attr:

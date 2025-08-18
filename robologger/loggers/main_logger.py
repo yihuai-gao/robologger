@@ -4,6 +4,7 @@ from loguru import logger
 from robotmq import RMQClient, deserialize, serialize
 from robologger.loggers.base_logger import BaseLogger
 from robologger.utils.stdout_setup import setup_logging
+from atexit import register
 
 class MainLogger:
     def __init__(
@@ -35,6 +36,13 @@ class MainLogger:
             self.clients[logger_name] = RMQClient(client_name=logger_name, server_endpoint=logger_endpoint)
 
         self.episode_idx: int = -1
+        self.is_recording: bool = False
+
+        register(self.on_exit)
+
+    def on_exit(self):
+        if self.is_recording:
+            self.stop_recording()
 
     def validate_logger_endpoints(self):
         for logger_name, client in self.clients.items():
@@ -47,6 +55,11 @@ class MainLogger:
                 raise RuntimeError(f"Requesting endpoint {self.logger_endpoints[logger_name]}, should be {logger_name}, but got {data['name']}")
 
     def start_recording(self, episode_idx: Optional[int] = None):
+        if self.is_recording:
+            logger.warning("Already recording, stopping current recording")
+            self.stop_recording()
+
+        self.is_recording = True
         self.validate_logger_endpoints()
 
         if episode_idx is not None:
@@ -74,6 +87,9 @@ class MainLogger:
         return alive_loggers
 
     def stop_recording(self):
+        if not self.is_recording:
+            raise RuntimeError("Not recording, but received stop command in main logger")
+        self.is_recording = False
         alive_loggers = self.get_alive_loggers()
         for logger_name in alive_loggers:
             self.clients[logger_name].put_data(topic="command", data=serialize({"type": "stop"}))
