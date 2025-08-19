@@ -70,9 +70,9 @@ class MainLogger:
         else:
             self.episode_idx = self._get_next_episode_idx()
         assert self.episode_idx >= 0, "Episode index must be non-negative"
-        logger.info(f"Starting episode {self.episode_idx}")
-
         episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}")
+        logger.info(f"Starting episode {self.episode_idx} in {episode_dir}")
+
         if not os.path.exists(episode_dir):
             os.makedirs(episode_dir)
 
@@ -96,7 +96,8 @@ class MainLogger:
         alive_loggers = self.get_alive_loggers()
         for logger_name in alive_loggers:
             self.clients[logger_name].put_data(topic="command", data=serialize({"type": "stop"}))
-        logger.info(f"Stopped recording for {len(alive_loggers)} loggers")
+            episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}")
+        logger.info(f"Stopped recording for {len(alive_loggers)} loggers. Data has been saved to {episode_dir}")
 
     def _get_next_episode_idx(self) -> int:
         """Find the next available episode index"""
