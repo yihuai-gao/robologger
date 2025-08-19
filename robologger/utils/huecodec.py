@@ -24,21 +24,11 @@
 
 import math
 from contextlib import contextmanager
+from typing import Optional
 
 # import matplotlib.pyplot as plt
 import numpy as np
-
-def depth2logrgb(depth: np.ndarray, zrange: tuple[float, float], opts: EncoderOpts = None):
-    opts = opts or _default_opts
-    depth_clipped = np.clip(depth, zrange[0], zrange[1])
-    depth_logged = np.log(1 + depth_clipped) / np.log(1 + zrange[1])
-    return depth2rgb(depth_logged, zrange, opts=opts)
-
-def logrgb2depth(rgb: np.ndarray, zrange: tuple[float, float], opts: EncoderOpts = None):
-    opts = opts or _default_opts
-    depth_logged = rgb2depth(rgb, zrange, opts=opts)
-    depth = np.exp(depth_logged * np.log(1 + zrange[1])) - 1
-    return depth
+import numpy.typing as npt
 
 def rgb2hsv(
     rgb: np.ndarray, *, output: np.ndarray = None, ftype: np.dtype = np.float32
@@ -148,7 +138,7 @@ class EncoderOpts:
 
 
 # Default encoder settings
-_default_opts = EncoderOpts()
+_default_opts = EncoderOpts(use_lut=True)
 
 
 @contextmanager
@@ -445,3 +435,15 @@ def rgb2depth(
 
 # if __name__ == "__main__":
 #     main()
+
+def depth2logrgb(depth: np.ndarray, zrange: tuple[float, float], opts: Optional[EncoderOpts] = None) -> npt.NDArray[np.uint8]:
+    opts = opts or _default_opts
+    depth_clipped = np.clip(depth, zrange[0], zrange[1])
+    depth_logged = np.log(1 + depth_clipped) / np.log(1 + zrange[1])
+    return depth2rgb(depth_logged, zrange, opts=opts)
+
+def logrgb2depth(rgb: np.ndarray, zrange: tuple[float, float], opts: Optional[EncoderOpts] = None) -> npt.NDArray[np.float32]:
+    opts = opts or _default_opts
+    depth_logged = rgb2depth(rgb, zrange, opts=opts)
+    depth = np.exp(depth_logged * np.log(1 + zrange[1])) - 1
+    return depth
