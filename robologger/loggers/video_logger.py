@@ -8,7 +8,7 @@ import numpy.typing as npt
 import zarr
 from loguru import logger
 
-from robologger.utils.huecodec import depth2rgb, EncoderOpts
+from robologger.utils.huecodec import depth2logrgb, EncoderOpts
 from robologger.loggers.base_logger import BaseLogger
 
 class VideoLogger(BaseLogger):
@@ -98,7 +98,7 @@ class VideoLogger(BaseLogger):
                       mp4_file_path,
                   ]
                 self.ffmpeg_processes[cam_name] = subprocess.Popen(
-                    ffmpeg_cmd, stdin=subprocess.PIPE
+                    ffmpeg_cmd, stdin=subprocess.PIPE 
                 )
                 logger.info(f"[{self.name}] Initialized ffmpeg process for camera: {cam_name}")
         except Exception as e:
@@ -129,16 +129,6 @@ class VideoLogger(BaseLogger):
 
         self.ffmpeg_processes.clear()
         self.zarr_group = None
-
-    def _encode_depth_to_rgb(self, depth_frame: npt.NDArray[np.float32]) -> npt.NDArray[np.uint8]:
-        """Encode depth frame to RGB using the same encoding as iPhone implementation"""
-        depth_clipped = np.clip(depth_frame, self.depth_range[0], self.depth_range[1])
-        depth_logged = np.log(1 + depth_clipped) / np.log(1 + self.depth_range[1])
-        depth_rgb_float = depth2rgb(
-            depth_logged, self.depth_range, inv_depth=False, opts=self.hue_opts
-        )
-        depth_rgb_uint8 = (depth_rgb_float * 255).astype(np.uint8)
-        return depth_rgb_uint8  # RGB
 
     def log_frame(
         self,
@@ -178,8 +168,10 @@ class VideoLogger(BaseLogger):
                 raise ValueError(f"Depth frame shape mismatch for camera '{camera_name}'. "
                                 f"Expected {expected_shape}, got {frame.shape}")
             
-            frame_rgb = self._encode_depth_to_rgb(frame)
+            frame_rgb = depth2logrgb(frame, self.depth_range, opts=self.hue_opts)
             frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+            cv2.imshow("frame_rgb", frame_bgr)
+            cv2.waitKey(1)
 
         else:
             raise ValueError(f"Unknown camera type: {config['type']}")
