@@ -1,6 +1,7 @@
 import os
 import subprocess
 from typing import Dict, Any, Union
+import shutil
 
 import cv2
 import numpy as np
@@ -53,6 +54,11 @@ class VideoLogger(BaseLogger):
         if not os.path.exists(episode_dir):
             os.makedirs(episode_dir)
             logger.info(f"[{self.name}] Created episode directory: {episode_dir}")
+        else:
+            logger.info(f"[{self.name}] Episode directory already exists: {episode_dir}")
+            logger.info(f"[{self.name}] Deleting existing directory and creating a new one")
+            shutil.rmtree(episode_dir)
+            os.makedirs(episode_dir)
 
         zarr_path = os.path.join(episode_dir, f"{self.name}.zarr")
         self.zarr_group = zarr.open_group(zarr_path, mode="w")

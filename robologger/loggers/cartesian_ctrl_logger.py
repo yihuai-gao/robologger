@@ -5,6 +5,7 @@ import zarr
 import os
 from typing import Dict, Any
 from loguru import logger
+import shutil
 
 class CartesianCtrlLogger(BaseLogger):
     def __init__(
@@ -26,6 +27,11 @@ class CartesianCtrlLogger(BaseLogger):
         if not os.path.exists(episode_dir):
             os.makedirs(episode_dir)
             logger.info(f"[{self.name}] Created episode directory: {episode_dir}")
+        else:
+            logger.info(f"[{self.name}] Episode directory already exists: {episode_dir}")
+            logger.info(f"[{self.name}] Deleting existing directory and creating a new one")
+            shutil.rmtree(episode_dir)
+            os.makedirs(episode_dir)
         
         zarr_path = os.path.join(episode_dir, f"{self.name}.zarr")
 
