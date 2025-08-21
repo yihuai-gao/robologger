@@ -24,14 +24,6 @@ class JointCtrlLogger(BaseLogger):
         episode_dir = self.episode_dir
         if episode_dir is None:
             raise RuntimeError("episode_dir not set. start_recording() must be called first.")
-        if not os.path.exists(episode_dir):
-            os.makedirs(episode_dir)
-            logger.info(f"[{self.name}] Created episode directory: {episode_dir}")
-        else:
-            logger.info(f"[{self.name}] Episode directory already exists: {episode_dir}")
-            logger.info(f"[{self.name}] Deleting existing directory and creating a new one")
-            shutil.rmtree(episode_dir)
-            os.makedirs(episode_dir)
 
         zarr_path = os.path.join(episode_dir, f"{self.name}.zarr")
 
@@ -94,6 +86,10 @@ class JointCtrlLogger(BaseLogger):
         state_joint_pos: npt.NDArray[np.float32],
     ):
         """Log robot state (current joint positions)"""
+        if not self._is_recording:
+            logger.warning(f"[{self.name}] Not recording, but received state command")
+            return
+        
         if self.zarr_group is None:
             logger.warning(f"[{self.name}] Cannot log state: storage not initialized")
             raise ValueError("Storage not initialized. Please call start_episode() before logging states to make sure the zarr group is initialized.")

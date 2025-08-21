@@ -5,6 +5,7 @@ from robotmq import RMQClient, deserialize, serialize
 from robologger.loggers.base_logger import BaseLogger
 from robologger.utils.stdout_setup import setup_logging
 from atexit import register
+import shutil
 
 class MainLogger:
     def __init__(
@@ -74,6 +75,11 @@ class MainLogger:
         logger.info(f"Starting episode {self.episode_idx} in {episode_dir}")
 
         if not os.path.exists(episode_dir):
+            os.makedirs(episode_dir)
+            logger.info(f"Created episode directory: {episode_dir}")
+        else:
+            logger.info(f"Episode directory already exists, deleting existing directory and creating a new one: {episode_dir}")
+            shutil.rmtree(episode_dir)
             os.makedirs(episode_dir)
 
         for logger_name, logger_endpoint in self.logger_endpoints.items():

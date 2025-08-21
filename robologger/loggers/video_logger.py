@@ -51,14 +51,6 @@ class VideoLogger(BaseLogger):
         episode_dir = self.episode_dir
         if episode_dir is None:
             raise RuntimeError("episode_dir not set. start_recording() must be called first.")
-        if not os.path.exists(episode_dir):
-            os.makedirs(episode_dir)
-            logger.info(f"[{self.name}] Created episode directory: {episode_dir}")
-        else:
-            logger.info(f"[{self.name}] Episode directory already exists: {episode_dir}")
-            logger.info(f"[{self.name}] Deleting existing directory and creating a new one")
-            shutil.rmtree(episode_dir)
-            os.makedirs(episode_dir)
 
         zarr_path = os.path.join(episode_dir, f"{self.name}.zarr")
         self.zarr_group = zarr.open_group(zarr_path, mode="w")
@@ -129,7 +121,10 @@ class VideoLogger(BaseLogger):
 
     def _close_storage(self):
         """Close storage"""
-        assert self.zarr_group is not None, "Zarr group is not initialized"
+        if self.zarr_group is None:
+            logger.error(f"[{self.name}] Zarr group is not initialized but _close_storage() is called in video logger")
+            return
+        
         for cam_name, process in self.ffmpeg_processes.items():
             self._close_ffmpeg_process(cam_name, process)
 
@@ -143,6 +138,10 @@ class VideoLogger(BaseLogger):
         timestamp: float,
         frame: npt.NDArray[Any],  # RGB uint8 or depth float32
     ):
+        if not self._is_recording:
+            logger.warning(f"[{self.name}] Not recording, but received frame command")
+            return
+        
         if self.zarr_group is None:
             raise ValueError("Storage not initialized. Please call start_episode() before logging frames to make sure the zarr group is initialized.")
         
