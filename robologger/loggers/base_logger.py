@@ -18,12 +18,14 @@ class LoggerType(Enum):
     GENERIC = "generic"
 
 class BaseLogger(ABC):
+    """Abstract base class for all loggers with RMQ communication."""
     def __init__(
         self,
         name: str,
         endpoint: str, # "tcp://0.0.0.0:55555"
         attr: Dict[str, Any],
     ):
+        """Initialize base logger with RMQ communication."""
         setup_logging()
         
         self.name: str = name
@@ -46,6 +48,7 @@ class BaseLogger(ABC):
             self.stop_recording()
 
     def update_recording_state(self) -> bool:
+        """Process recording commands from RMQ and update state."""
         raw_data, timestamps = self.rmq_server.pop_data(topic="command", n=0) # Clear the entire queue
         if len(raw_data) > 0:
             # Only consider the last message
@@ -66,6 +69,7 @@ class BaseLogger(ABC):
         return self._is_recording
 
     def start_recording(self, episode_dir: str):
+        """Start recording session and initialize storage."""
         self._is_recording = True
         self.episode_dir = episode_dir
         logger.info(f"Starting recording in episode directory: {self.episode_dir}")
@@ -74,12 +78,13 @@ class BaseLogger(ABC):
         self._set_attributes()
 
     def stop_recording(self):
+        """Stop recording session and close storage."""
         self._is_recording = False
         logger.info(f"Stopping recording: {self.episode_dir}")
         self._close_storage()
 
     def _set_attributes(self):
-        """Set attributes on the zarr group"""
+        """Set attributes on the zarr group."""
         assert self.zarr_group is not None, "Zarr group is not initialized"
         logger.info(f"Setting attributes on the zarr group: {self.attr}")
         for key, value in self.attr.items():

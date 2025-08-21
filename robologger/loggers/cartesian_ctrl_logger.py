@@ -8,12 +8,14 @@ from loguru import logger
 import shutil
 
 class CartesianCtrlLogger(BaseLogger):
+    """Logger for cartesian control data."""
     def __init__(
         self,
         name: str,
         endpoint: str,
         attr: Dict[str, Any],
     ):
+        """Initialize cartesian control logger."""
         super().__init__(name, endpoint, attr)
         
         self.state_count = 0
@@ -94,7 +96,7 @@ class CartesianCtrlLogger(BaseLogger):
         state_pos_xyz: npt.NDArray[np.float32],
         state_quat_wxyz: npt.NDArray[np.float32],
     ):
-        """Log robot state (current pose)"""
+        """Log robot state (current pose)."""
         if not self._is_recording:
             logger.warning(f"[{self.name}] Not recording, but received state command")
             return
@@ -141,7 +143,7 @@ class CartesianCtrlLogger(BaseLogger):
         target_pos_xyz: npt.NDArray[np.float32],
         target_quat_wxyz: npt.NDArray[np.float32],
     ):
-        """Log robot target (desired pose)"""
+        """Log robot target (desired pose)."""
         if not self._is_recording:
             logger.warning(f"[{self.name}] Not recording, but received target command")
             return
@@ -183,7 +185,7 @@ class CartesianCtrlLogger(BaseLogger):
 
 
     def get_stats(self) -> Dict[str, Any]:
-          """Utility function to get logging statistics"""
+          """Get logging statistics."""
           stats = {
               "episode_dir": self.episode_dir,
               "state_count": self.state_count,

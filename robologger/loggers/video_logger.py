@@ -13,6 +13,7 @@ from robologger.utils.huecodec import depth2logrgb, EncoderOpts
 from robologger.loggers.base_logger import BaseLogger
 
 class VideoLogger(BaseLogger):
+    """Logger for video data from multiple cameras."""
     def __init__(
         self,
         name: str,
@@ -20,6 +21,7 @@ class VideoLogger(BaseLogger):
         attr: Dict[str, Any],
         depth_range: tuple[float, float] = (0.0, 4.0),
     ):
+        """Initialize video logger with camera configurations."""
         super().__init__(name, endpoint, attr)
         self.ffmpeg_processes: Dict[str, subprocess.Popen[bytes]] = {}
 
@@ -28,7 +30,7 @@ class VideoLogger(BaseLogger):
         self.hue_opts = EncoderOpts(use_lut=True)
 
     def _validate_camera_config(self, attr: Dict[str, Any]) -> None:
-        """Validate camera config"""
+        """Validate camera configuration dictionary."""
         if "camera_configs" not in attr:
             raise ValueError("Missing 'camera_configs' in attr")
         if not isinstance(attr["camera_configs"], dict):
@@ -47,7 +49,7 @@ class VideoLogger(BaseLogger):
                 raise ValueError(f"Camera type for '{cam_name}' must be 'rgb' or 'depth', got '{config['type']}'")
 
     def _init_storage(self):
-        """Initialize storage"""
+        """Initialize zarr storage and FFmpeg processes for video recording."""
         episode_dir = self.episode_dir
         if episode_dir is None:
             raise RuntimeError("episode_dir not set. start_recording() must be called first.")
@@ -107,7 +109,7 @@ class VideoLogger(BaseLogger):
 
 
     def _close_ffmpeg_process(self, cam_name: str, process: subprocess.Popen, timeout: int = 10) -> None:
-        """Helper function to gracefully close an FFmpeg process"""
+        """Gracefully close an FFmpeg process."""
         logger.info(f"Stopping FFmpeg process for '{cam_name}'...")
         if process.stdin:
             process.stdin.close()
@@ -120,7 +122,7 @@ class VideoLogger(BaseLogger):
         logger.info(f"FFmpeg process for '{cam_name}' stopped.")
 
     def _close_storage(self):
-        """Close storage"""
+        """Close FFmpeg processes and zarr storage."""
         if self.zarr_group is None:
             logger.error(f"[{self.name}] Zarr group is not initialized but _close_storage() is called in video logger")
             return
@@ -138,6 +140,7 @@ class VideoLogger(BaseLogger):
         timestamp: float,
         frame: npt.NDArray[Any],  # RGB uint8 or depth float32
     ):
+        """Log single video frame with timestamp."""
         if not self._is_recording:
             logger.warning(f"[{self.name}] Not recording, but received frame command")
             return
@@ -203,7 +206,7 @@ class VideoLogger(BaseLogger):
             raise RuntimeError(f"[{self.name}] FFmpeg process for '{camera_name}' not available")
         
     def log_frames(self, frame_dict: Dict[str, Dict[str, Any]]):
-        """Log frames for all cameras with individual timestamps
+        """Log frames for multiple cameras with individual timestamps.
         
         Expected frame_dict format:
         {

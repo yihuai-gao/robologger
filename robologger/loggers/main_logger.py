@@ -8,6 +8,7 @@ from atexit import register
 import shutil
 
 class MainLogger:
+    """Main logger coordinating multiple sub-loggers."""
     def __init__(
         self,
         name: str,
@@ -106,7 +107,7 @@ class MainLogger:
         logger.info(f"Stopped recording for {len(alive_loggers)} loggers. Data has been saved to {episode_dir}")
 
     def _get_next_episode_idx(self) -> int:
-        """Find the next available episode index"""
+        """Find the next available episode index."""
         if not os.path.exists(self.run_dir):
             return 0
         

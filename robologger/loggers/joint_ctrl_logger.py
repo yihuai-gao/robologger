@@ -8,19 +8,21 @@ from loguru import logger
 import shutil
 
 class JointCtrlLogger(BaseLogger):
+    """Logger for joint control data."""
     def __init__(
         self,
         name: str,
         endpoint: str,
         attr: Dict[str, Any],
     ):
+        """Initialize joint control logger."""
         super().__init__(name, endpoint, attr)
         
         self.state_count = 0
         self.target_count = 0
 
     def _init_storage(self):
-        """Initialize zarr storage for joint control data"""
+        """Initialize zarr storage for joint control data."""
         episode_dir = self.episode_dir
         if episode_dir is None:
             raise RuntimeError("episode_dir not set. start_recording() must be called first.")
@@ -72,7 +74,7 @@ class JointCtrlLogger(BaseLogger):
             
 
     def _close_storage(self):
-        """Close zarr storage"""
+        """Close zarr storage."""
         if self.zarr_group is not None:
             logger.info(f"[{self.name}] Closing zarr storage. Recorded {self.state_count} states and {self.target_count} targets")
             self.zarr_group = None
@@ -85,7 +87,7 @@ class JointCtrlLogger(BaseLogger):
         state_timestamp: float,
         state_joint_pos: npt.NDArray[np.float32],
     ):
-        """Log robot state (current joint positions)"""
+        """Log robot state (current joint positions)."""
         if not self._is_recording:
             logger.warning(f"[{self.name}] Not recording, but received state command")
             return
@@ -131,7 +133,7 @@ class JointCtrlLogger(BaseLogger):
         target_timestamp: float,
         target_joint_pos: npt.NDArray[np.float32],
     ):
-        """Log robot target (desired joint positions)"""
+        """Log robot target (desired joint positions)."""
         if self.zarr_group is None:
             logger.warning(f"[{self.name}] Cannot log target: storage not initialized")
             raise ValueError("Storage not initialized. Please call start_episode() before logging targets to make sure the zarr group is initialized.")
@@ -169,7 +171,7 @@ class JointCtrlLogger(BaseLogger):
 
 
     def get_stats(self) -> Dict[str, Any]:
-          """Utility function to get logging statistics"""
+          """Get logging statistics."""
           stats = {
               "episode_dir": self.episode_dir,
               "state_count": self.state_count,
