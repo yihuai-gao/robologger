@@ -45,8 +45,7 @@ class BaseLogger(ABC):
         if self._is_recording:
             self.stop_recording()
 
-    @property
-    def is_recording(self) -> bool:
+    def update_recording_state(self) -> bool:
         raw_data, timestamps = self.rmq_server.pop_data(topic="command", n=0) # Clear the entire queue
         if len(raw_data) > 0:
             # Only consider the last message
