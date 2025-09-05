@@ -44,6 +44,7 @@ class EndEffectorSetup(StrEnum):
     ROBOTIQ = auto()
 
 if __name__ == "__main__":
+    # test the enum names
     for name in Morphology:
         print(name)
     for name in CameraName:

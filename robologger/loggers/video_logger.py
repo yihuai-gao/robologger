@@ -1,5 +1,6 @@
 import os
 import subprocess
+import re
 from typing import Dict, Any, Union
 import shutil
 
@@ -11,6 +12,7 @@ from loguru import logger
 
 from robologger.utils.huecodec import depth2logrgb, EncoderOpts
 from robologger.loggers.base_logger import BaseLogger
+from robologger.utils.classes import CameraName
 
 class VideoLogger(BaseLogger):
     """Logger for video data from multiple cameras."""
@@ -25,9 +27,61 @@ class VideoLogger(BaseLogger):
         super().__init__(name, endpoint, attr)
         self.ffmpeg_processes: Dict[str, subprocess.Popen[bytes]] = {}
 
+        self._validate_logger_name(name)
         self._validate_camera_config(attr)
         self.depth_range = depth_range
         self.hue_opts = EncoderOpts(use_lut=True)
+
+    def _validate_logger_name(self, name: str) -> None:
+        """Validate VideoLogger name follows CameraName enum pattern."""
+        pattern = re.compile(r'^(' + '|'.join(re.escape(cam.value) for cam in CameraName) + r')(\d+)$')
+        match = pattern.match(name)
+        
+        if not match:
+            examples = [f"{cam.value}0" for cam in CameraName]
+            raise ValueError(
+                f"VideoLogger name '{name}' is invalid.\n"
+                f"Must follow pattern: [CameraName][Index]\n"
+                f"Valid patterns: {', '.join(examples)}\n"
+                f"For multiple loggers of same type, use zero-indexed continuous naming: "
+                f"right_wrist_camera_0, right_wrist_camera_1, right_wrist_camera_2, etc."
+            )
+    
+    def _validate_logger_name_uniqueness(self):
+        """Validate zero-indexed continuity for same camera type loggers in episode directory."""
+        pattern = re.compile(r'^(' + '|'.join(re.escape(cam.value) for cam in CameraName) + r')(\d+)$')
+        match = pattern.match(self.name)
+        
+        if not match:
+            return  # Should not happen as _validate_logger_name already checked
+            
+        base_name, index = match.groups()
+        
+        # Check existing zarr files in episode directory for zero-indexing
+        if self.episode_dir and os.path.exists(self.episode_dir):
+            existing_zarrs = [f for f in os.listdir(self.episode_dir) if f.endswith('.zarr')]
+            same_type_indices = []
+            
+            for zarr_name in existing_zarrs:
+                zarr_match = pattern.match(zarr_name.replace('.zarr', ''))
+                if zarr_match and zarr_match.group(1) == base_name:
+                    same_type_indices.append(int(zarr_match.group(2)))
+            
+            # Add current index
+            same_type_indices.append(int(index))
+            same_type_indices.sort()
+            
+            expected = list(range(len(same_type_indices)))
+            if same_type_indices != expected:
+                existing_names = [f"{base_name}{i}" for i in same_type_indices if i != int(index)]
+                expected_names = [f"{base_name}{i}" for i in expected]
+                raise ValueError(
+                    f"Multiple VideoLoggers of type '{base_name}' must use zero-indexed continuous naming.\n"
+                    f"Current logger: {self.name}\n"
+                    f"Existing loggers: {existing_names}\n"
+                    f"Expected naming sequence: {expected_names}\n"
+                    f"Please rename to follow continuous zero-indexing: {base_name}0, {base_name}1, {base_name}2, etc."
+                )
 
     def _validate_camera_config(self, attr: Dict[str, Any]) -> None:
         """Validate camera configuration dictionary."""
@@ -54,6 +108,9 @@ class VideoLogger(BaseLogger):
         if episode_dir is None:
             raise RuntimeError("episode_dir not set. start_recording() must be called first.")
 
+        # Validate zero-indexed continuity before creating zarr
+        self._validate_logger_name_uniqueness()
+        
         zarr_path = os.path.join(episode_dir, f"{self.name}.zarr")
         self.zarr_group = zarr.open_group(zarr_path, mode="w")
         logger.info(f"[{self.name}] Initialized zarr group: {zarr_path}")
