@@ -21,7 +21,7 @@ class VideoLogger(BaseLogger):
         name: str,
         endpoint: str,
         attr: Dict[str, Any],
-        depth_range: tuple[float, float] = (0.0, 4.0),
+        depth_range: tuple[float, float] = (0.0, 4.0), # TODO: change
     ):
         """Initialize video logger with camera configurations."""
         super().__init__(name, endpoint, attr)
@@ -53,11 +53,11 @@ class VideoLogger(BaseLogger):
         match = pattern.match(self.name)
         
         if not match:
-            return  # Should not happen as _validate_logger_name already checked
+            return  # should not happen as _validate_logger_name already checked
             
         base_name, index = match.groups()
         
-        # Check existing zarr files in episode directory for zero-indexing
+        # check existing zarr files in episode directory for zero-indexing
         if self.episode_dir and os.path.exists(self.episode_dir):
             existing_zarrs = [f for f in os.listdir(self.episode_dir) if f.endswith('.zarr')]
             same_type_indices = []
@@ -67,7 +67,7 @@ class VideoLogger(BaseLogger):
                 if zarr_match and zarr_match.group(1) == base_name:
                     same_type_indices.append(int(zarr_match.group(2)))
             
-            # Add current index
+            # add current index
             same_type_indices.append(int(index))
             same_type_indices.sort()
             
