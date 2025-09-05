@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 from robotmq import RMQClient, deserialize, serialize
 from robologger.loggers.base_logger import BaseLogger
+from robologger.utils.classes import Morphology
 from robologger.utils.stdout_setup import setup_logging
 from atexit import register
 import shutil
@@ -17,6 +18,7 @@ class MainLogger:
         task_name: str,
         run_name: str,
         logger_endpoints: Dict[str, str], # {logger_name: logger_endpoint}
+        morphology: Morphology,
         # attr: dict,
     ):
         setup_logging()
@@ -43,7 +45,24 @@ class MainLogger:
         self.episode_idx: int = -1
         self.is_recording: bool = False
 
+        self._init_metadata()
+
         register(self.on_exit)
+
+    def _init_metadata(self):
+        self.zarr_group = zarr.open_group(os.path.join(self.run_dir, "metadata.zarr"), mode="w")
+        assert self.zarr_group is not None, "Zarr group is not initialized"
+        logger.info(f"Initialized zarr group: {os.path.join(self.run_dir, 'metadata.zarr')}")
+
+    def _store_metadata(self):
+        self.zarr_group.attrs["project_name"] = self.project_name
+        self.zarr_group.attrs["task_name"] = self.task_name
+        self.zarr_group.attrs["run_name"] = self.run_name
+        self.zarr_group.attrs["morphology"] = self.morphology
+
+        # TODO: pass in from after recording stop to update these two attributes
+        self.zarr_group.attrs["is_demonstration"] = self.is_demonstration 
+        self.zarr_group.attrs["is_sucessful"] = self.is_sucessful
 
     def on_exit(self):
         if self.is_recording:
