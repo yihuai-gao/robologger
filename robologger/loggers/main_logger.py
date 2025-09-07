@@ -1,12 +1,14 @@
 import os
+import re
 from typing import Any, Dict, List, Optional
 from loguru import logger
 from robotmq import RMQClient, deserialize, serialize
 from robologger.loggers.base_logger import BaseLogger
-from robologger.utils.classes import Morphology
+from robologger.utils.classes import Morphology, CameraName
 from robologger.utils.stdout_setup import setup_logging
 from atexit import register
 import shutil
+import zarr
 
 class MainLogger:
     """Main logger coordinating multiple sub-loggers."""
@@ -38,6 +40,9 @@ class MainLogger:
         self.clients: Dict[str, RMQClient] = {}
 
         self.logger_endpoints: Dict[str, str] = logger_endpoints
+
+        # Validate video logger names
+        self._validate_video_logger_names()
 
         for logger_name, logger_endpoint in logger_endpoints.items():
             self.clients[logger_name] = RMQClient(client_name=logger_name, server_endpoint=logger_endpoint)
@@ -141,3 +146,36 @@ class MainLogger:
                     continue
         
         return max(existing_episodes, default=-1) + 1
+
+    def _is_video_logger(self, name: str) -> bool:
+        """Check if logger name matches CameraName enum pattern (indicates video logger)."""
+        pattern = re.compile(r'^(' + '|'.join(re.escape(cam.value) for cam in CameraName) + r')(\d+)$')
+        return pattern.match(name) is not None
+
+    def _validate_video_logger_names(self):
+        """Validate all video logger names for pattern compliance and zero-indexed continuity."""
+        video_loggers = {}  # {camera_base: [indices]}
+        pattern = re.compile(r'^(' + '|'.join(re.escape(cam.value) for cam in CameraName) + r')(\d+)$')
+        
+        # group video loggers by camera base name
+        for logger_name in self.logger_endpoints.keys():
+            match = pattern.match(logger_name)
+            if match:
+                base_name, index = match.groups()
+                if base_name not in video_loggers:
+                    video_loggers[base_name] = []
+                video_loggers[base_name].append(int(index))
+        
+        # validate zero-indexed continuity for each camera type
+        for base_name, indices in video_loggers.items():
+            indices.sort()
+            expected = list(range(len(indices)))
+            if indices != expected:
+                logger_names = [f"{base_name}{i}" for i in indices]
+                expected_names = [f"{base_name}{i}" for i in expected]
+                raise ValueError(
+                    f"Multiple VideoLoggers of type '{base_name}' must use zero-indexed continuous naming.\n"
+                    f"Current loggers: {logger_names}\n" 
+                    f"Expected naming sequence: {expected_names}\n"
+                    f"Please rename to follow continuous zero-indexing: {base_name}0, {base_name}1, {base_name}2, etc."
+                )
