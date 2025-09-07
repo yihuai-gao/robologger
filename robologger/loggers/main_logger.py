@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from loguru import logger
 from robotmq import RMQClient, deserialize, serialize
 from robologger.loggers.base_logger import BaseLogger
@@ -11,7 +11,17 @@ import shutil
 import zarr
 
 class MainLogger:
-    """Main logger coordinating multiple sub-loggers."""
+    """
+    Main logger coordinating multiple sub-loggers.
+    
+    Args:
+        success_config: Controls how episode success is determined after stop_recording():
+            - None or "input_true" (default): Prompt user with [Y/n], defaults to successful
+            - "input_false": Prompt user with [y/N], defaults to failed
+            - True: Always mark episodes as successful (no prompt)
+            - False: Always mark episodes as failed (no prompt)
+            Note: Users can always override manually using set_successful(bool)
+    """
     def __init__(
         self,
         name: str,
@@ -21,6 +31,8 @@ class MainLogger:
         run_name: str,
         logger_endpoints: Dict[str, str], # {logger_name: logger_endpoint}
         morphology: Morphology,
+        is_demonstration: bool = False,
+        success_config: Union[str, bool, None] = None,
         # attr: dict,
     ):
         setup_logging()
@@ -41,7 +53,10 @@ class MainLogger:
 
         self.logger_endpoints: Dict[str, str] = logger_endpoints
 
-        # Validate video logger names
+        self.morphology = morphology
+        self.is_demonstration = is_demonstration
+
+        # validate video logger names
         self._validate_video_logger_names()
 
         for logger_name, logger_endpoint in logger_endpoints.items():
@@ -50,9 +65,38 @@ class MainLogger:
         self.episode_idx: int = -1
         self.is_recording: bool = False
 
+        # init success tracking
+        self._parse_success_config(success_config)
+
         self._init_metadata()
 
         register(self.on_exit)
+
+    def _parse_success_config(self, config):
+        """Parse success configuration from single parameter."""
+        if config is None or config == "input_true":
+            # input mode with True default [Y/n]
+            self.success_mode = "input"
+            self.default_success = True
+        elif config == "input_false":
+            # input mode with False default [y/N]
+            self.success_mode = "input"
+            self.default_success = False
+        elif config is True:
+            # hardcode all as successful
+            self.success_mode = "hardcode"
+            self.hardcode_success = True
+        elif config is False:
+            # hardcode all as failed
+            self.success_mode = "hardcode" 
+            self.hardcode_success = False
+        else:
+            raise ValueError(
+                f"Invalid success_config: {config}. Must be one of: "
+                "None, 'input_true', 'input_false', True, or False\n"
+                f"Got: {config}\n"
+                f"Read docstring for more information."
+            )
 
     def _init_metadata(self):
         self.zarr_group = zarr.open_group(os.path.join(self.run_dir, "metadata.zarr"), mode="w")
@@ -64,8 +108,6 @@ class MainLogger:
         self.zarr_group.attrs["task_name"] = self.task_name
         self.zarr_group.attrs["run_name"] = self.run_name
         self.zarr_group.attrs["morphology"] = self.morphology
-
-        # TODO: pass in from after recording stop to update these two attributes
         self.zarr_group.attrs["is_demonstration"] = self.is_demonstration 
         self.zarr_group.attrs["is_sucessful"] = self.is_sucessful
 
@@ -123,6 +165,8 @@ class MainLogger:
     def stop_recording(self):
         if not self.is_recording:
             raise RuntimeError("Not recording, but received stop command in main logger")
+        self._handle_success_setting()
+        self._store_metadata()
         self.is_recording = False
         alive_loggers = self.get_alive_loggers()
         for logger_name in alive_loggers:
@@ -146,6 +190,50 @@ class MainLogger:
                     continue
         
         return max(existing_episodes, default=-1) + 1
+
+    def _handle_success_setting(self):
+        """Handle success setting based on configured mode."""
+        if self.success_mode == "hardcode":
+            self.is_sucessful = self.hardcode_success
+        elif self.success_mode == "input":
+            self._prompt_for_success()
+
+    def _prompt_for_success(self):
+        """Prompt user for episode success status."""
+        if self.default_success:
+            prompt = "Was this episode successful? [Y/n]: "
+            default_response = "Y"
+        else:
+            prompt = "Was this episode successful? [y/N]: "
+            default_response = "N"
+        
+        while True:
+            try:
+                user_input = input(prompt).strip()
+                
+                # handle empty input (use default)
+                if not user_input:
+                    user_input = default_response
+                
+                # process response
+                if user_input.lower() in ['y', 'yes', 't', 'true']:
+                    self.is_sucessful = True
+                    break
+                elif user_input.lower() in ['n', 'no', 'f', 'false']:
+                    self.is_sucessful = False
+                    break
+                else:
+                    logger.warning("Please enter 'y' for yes or 'n' for no, or 't' for true or 'f' for false.")
+            except (EOFError, KeyboardInterrupt):
+                # handle Ctrl+C or EOF gracefully
+                logger.warning(f"\nUsing default response: {self.default_success}")
+                self.is_sucessful = self.default_success
+                break
+
+    def set_successful(self, is_successful: bool):
+        """Manually set the success status for the current episode."""
+        self.is_sucessful = is_successful
+        logger.info(f"Episode {self.episode_idx} success status manually set to: {is_successful}")
 
     def _is_video_logger(self, name: str) -> bool:
         """Check if logger name matches CameraName enum pattern (indicates video logger)."""
