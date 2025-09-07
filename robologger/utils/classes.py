@@ -32,6 +32,23 @@ class CameraName(StrEnum):
     BODY_CAMERA_ = auto()
     THIRD_PERSON_CAMERA_ = auto()
 
+class RobotName(StrEnum):
+    """
+    Possible robot/gripper names.
+    - right_arm
+    - left_arm
+    - head
+    - body
+    - left_end_effector
+    - right_end_effector
+    """
+    RIGHT_ARM = auto()
+    LEFT_ARM = auto()
+    HEAD = auto()
+    BODY = auto()
+    LEFT_END_EFFECTOR = auto()
+    RIGHT_END_EFFECTOR = auto()
+
 class EndEffectorSetup(StrEnum):
     """
     End effector setups.
@@ -48,6 +65,8 @@ if __name__ == "__main__":
     for name in Morphology:
         print(name)
     for name in CameraName:
+        print(name)
+    for name in RobotName:
         print(name)
     for name in EndEffectorSetup:
         print(name)

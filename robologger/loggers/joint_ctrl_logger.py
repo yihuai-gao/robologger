@@ -8,7 +8,11 @@ from loguru import logger
 import shutil
 
 class JointCtrlLogger(BaseLogger):
-    """Logger for joint control data."""
+    """Logger for joint control data.
+    
+    Naming Convention:
+    - Must use RobotName enum values: right_arm, left_arm, head, body, left_end_effector, right_end_effector
+    """
     def __init__(
         self,
         name: str,
@@ -16,10 +20,22 @@ class JointCtrlLogger(BaseLogger):
         attr: Dict[str, Any],
     ):
         """Initialize joint control logger."""
+        self._validate_robot_name(name)
         super().__init__(name, endpoint, attr)
         
         self.state_count = 0
         self.target_count = 0
+
+    def _validate_robot_name(self, name: str) -> None:
+        """Validate logger name matches RobotName enum pattern."""
+        from robologger.utils.classes import RobotName
+        
+        valid_names = [robot.value for robot in RobotName]
+        if name not in valid_names:
+            raise ValueError(
+                f"JointCtrlLogger name '{name}' must match RobotName enum.\n"
+                f"Valid names: {valid_names}"
+            )
 
     def _init_storage(self):
         """Initialize zarr storage for joint control data."""
