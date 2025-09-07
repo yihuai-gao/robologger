@@ -13,7 +13,18 @@ from robologger.utils.huecodec import depth2logrgb, EncoderOpts
 from robologger.loggers.base_logger import BaseLogger
 
 class VideoLogger(BaseLogger):
-    """Logger for video data from multiple cameras."""
+    """Logger for video data from multi-camera subsystems.
+    
+    Each VideoLogger handles multiple camera streams with custom names stored in zarr file attributes.
+    Multiple VideoLoggers can be instantiated for each camera subsystem. For example, if you have 
+    3 iPhones mounted on the right wrist, each with 3 camera types (main_rgb, ultrawide_rgb, depth, etc.),
+    you would create 3 VideoLoggers with names like: right_wrist_camera_0, right_wrist_camera_1, 
+    right_wrist_camera_2 - one VideoLogger for each iPhone on the same wrist.
+    
+    Naming Convention:
+    - Must use CameraName enum values with zero-indexed suffixes
+    - Multiple loggers of same enum type must use continuous zero-indexed naming
+    """
     def __init__(
         self,
         name: str,
