@@ -5,7 +5,6 @@ import zarr
 import os
 from typing import Dict, Any
 from loguru import logger
-import shutil
 
 class CartesianCtrlLogger(BaseLogger):
     """Logger for cartesian control data.

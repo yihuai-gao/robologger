@@ -1,9 +1,8 @@
 import os
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 from loguru import logger
 from robotmq import RMQClient, deserialize, serialize
-from robologger.loggers.base_logger import BaseLogger
 from robologger.utils.classes import Morphology, CameraName
 from robologger.utils.stdout_setup import setup_logging
 from atexit import register
@@ -16,10 +15,11 @@ class MainLogger:
     
     Args:
         success_config: Controls how episode success is determined after stop_recording():
-            - None or "input_true" (default): Prompt user with [Y/n], defaults to successful
+            - None (default): Does not set is_successful (no prompt, no value assigned)
+            - "input_true": Prompt user with [Y/n], defaults to successful
             - "input_false": Prompt user with [y/N], defaults to failed
-            - True: Always mark episodes as successful (no prompt)
-            - False: Always mark episodes as failed (no prompt)
+            - True (bool or str): Always mark episodes as successful (no prompt)
+            - False (bool or str): Always mark episodes as failed (no prompt)
             Note: Users can always override manually using set_successful(bool)
     """
     def __init__(
@@ -74,7 +74,10 @@ class MainLogger:
 
     def _parse_success_config(self, config):
         """Parse success configuration from single parameter."""
-        if config is None or config == "input_true":
+        if config is None:
+            # success_config not passed in, default to none
+            self.success_mode = "none"
+        elif config == "input_true":
             # input mode with True default [Y/n]
             self.success_mode = "input"
             self.default_success = True
@@ -82,18 +85,18 @@ class MainLogger:
             # input mode with False default [y/N]
             self.success_mode = "input"
             self.default_success = False
-        elif config is True:
+        elif config is True or config.lower() == "true":
             # hardcode all as successful
             self.success_mode = "hardcode"
             self.hardcode_success = True
-        elif config is False:
+        elif config is False or config.lower() == "false":
             # hardcode all as failed
             self.success_mode = "hardcode" 
             self.hardcode_success = False
         else:
             raise ValueError(
                 f"Invalid success_config: {config}. Must be one of: "
-                "None, 'input_true', 'input_false', True, or False\n"
+                "None (default to none), 'input_true', 'input_false', True, or False\n"
                 f"Got: {config}\n"
                 f"Read docstring for more information."
             )
@@ -109,7 +112,8 @@ class MainLogger:
         self.zarr_group.attrs["run_name"] = self.run_name
         self.zarr_group.attrs["morphology"] = self.morphology
         self.zarr_group.attrs["is_demonstration"] = self.is_demonstration 
-        self.zarr_group.attrs["is_sucessful"] = self.is_sucessful
+        if self.success_mode is not None:
+            self.zarr_group.attrs["is_sucessful"] = self.is_sucessful
 
     def on_exit(self):
         if self.is_recording:
@@ -149,7 +153,7 @@ class MainLogger:
             shutil.rmtree(episode_dir)
             os.makedirs(episode_dir)
 
-        for logger_name, logger_endpoint in self.logger_endpoints.items():
+        for logger_name, _ in self.logger_endpoints.items():
             self.clients[logger_name].put_data(topic="command", data=serialize({"type": "start", "episode_dir": episode_dir}))
 
     def get_alive_loggers(self) -> List[str]:
@@ -197,6 +201,10 @@ class MainLogger:
             self.is_sucessful = self.hardcode_success
         elif self.success_mode == "input":
             self._prompt_for_success()
+        elif self.success_mode == "none":
+            # if success_config was None, don't set is_sucessful
+            logger.info("[MainLogger] Success mode is none, not setting is_sucessful. To set episode success manually, use set_successful(bool) method.")
+            return
 
     def _prompt_for_success(self):
         """Prompt user for episode success status."""
@@ -216,14 +224,14 @@ class MainLogger:
                     user_input = default_response
                 
                 # process response
-                if user_input.lower() in ['y', 'yes', 't', 'true']:
+                if user_input.lower() in ['y', 'yes']:
                     self.is_sucessful = True
                     break
-                elif user_input.lower() in ['n', 'no', 'f', 'false']:
+                elif user_input.lower() in ['n', 'no']:
                     self.is_sucessful = False
                     break
                 else:
-                    logger.warning("Please enter 'y' for yes or 'n' for no, or 't' for true or 'f' for false.")
+                    logger.warning("Please enter 'y' for yes or 'n' for no.")
             except (EOFError, KeyboardInterrupt):
                 # handle Ctrl+C or EOF gracefully
                 logger.warning(f"\nUsing default response: {self.default_success}")

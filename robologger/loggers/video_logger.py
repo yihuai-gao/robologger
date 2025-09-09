@@ -1,7 +1,6 @@
 import os
 import subprocess
-from typing import Dict, Any, Union
-import shutil
+from typing import Dict, Any
 
 import cv2
 import numpy as np
