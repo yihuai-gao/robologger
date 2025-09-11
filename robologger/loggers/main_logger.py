@@ -110,9 +110,9 @@ class MainLogger:
         self.zarr_group.attrs["project_name"] = self.project_name
         self.zarr_group.attrs["task_name"] = self.task_name
         self.zarr_group.attrs["run_name"] = self.run_name
-        self.zarr_group.attrs["morphology"] = self.morphology
+        self.zarr_group.attrs["morphology"] = self.morphology.value
         self.zarr_group.attrs["is_demonstration"] = self.is_demonstration 
-        if self.success_mode is not None:
+        if self.success_mode is not None: # if success_mode is None we don't set is_sucessful
             self.zarr_group.attrs["is_sucessful"] = self.is_sucessful
 
     def on_exit(self):
