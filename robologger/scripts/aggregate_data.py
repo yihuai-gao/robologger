@@ -3,6 +3,7 @@
 Usage:
     python aggregate_data.py --run_dir /path/to/run/directory
     python aggregate_data.py --run_dir /path/to/run/directory --output_name aggregated_data
+    python aggregate_data.py --run_dir /path/to/run/directory --output_name aggregated_data --max_workers 12 (default: 4)
 """
 
 import os
@@ -35,8 +36,6 @@ class MetadataReader:
             "corrupted" if metadata.zarr file is corrupted and unreadable
             None if metadata.zarr file doesn't exist
         """
-        import os
-        
         if not os.path.exists(metadata_zarr_path):
             return None
             
