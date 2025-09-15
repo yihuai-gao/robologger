@@ -68,7 +68,6 @@ class MainLogger:
         # init success tracking
         self._parse_success_config(success_config)
 
-        self._init_metadata()
 
         register(self.on_exit)
 
@@ -110,10 +109,11 @@ class MainLogger:
                     f"Read docstring for more information."
                 )
 
-    def _init_metadata(self):
-        self.zarr_group = zarr.open_group(os.path.join(self.run_dir, "metadata.zarr"), mode="w")
+    def _init_metadata(self, episode_dir: str):
+        metadata_path = os.path.join(episode_dir, "metadata.zarr")
+        self.zarr_group = zarr.open_group(metadata_path, mode="w")
         assert self.zarr_group is not None, "Zarr group is not initialized"
-        logger.info(f"Initialized zarr group: {os.path.join(self.run_dir, 'metadata.zarr')}")
+        logger.info(f"Initialized zarr group: {metadata_path}")
 
     def _store_metadata(self):
         self.zarr_group.attrs["project_name"] = self.project_name
@@ -163,6 +163,9 @@ class MainLogger:
             shutil.rmtree(episode_dir)
             os.makedirs(episode_dir)
 
+        # init metadata for this episode
+        self._init_metadata(episode_dir)
+        
         for logger_name, _ in self.logger_endpoints.items():
             self.clients[logger_name].put_data(topic="command", data=serialize({"type": "start", "episode_dir": episode_dir}))
 
