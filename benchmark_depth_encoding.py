@@ -202,7 +202,7 @@ def test_real_roundtrip_precision(test_frame: np.ndarray, hue_video_path: str,
     try:
         # Decode the actual encoded video
         bgr_frame = decode_first_frame_bgr24(hue_video_path, width, height)
-        rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)  # Keep as uint8 for LUT indexing
 
         # Convert back to depth using hue codec decoder
         hue_recovered = logrgb2depth(rgb_frame, depth_range, opts=hue_opts)
@@ -248,8 +248,10 @@ def test_precision_fallback() -> dict:
         'test_depths': test_depths,
         'ffv1_errors_mm': ffv1_errors * 1000,  # Convert to mm
         'hue_errors_mm': hue_errors * 1000,
-        'ffv1_max_error_mm': np.max(ffv1_errors) * 1000,
-        'hue_max_error_mm': np.max(hue_errors) * 1000
+        'ffv1_max_error_mm': float(np.max(ffv1_errors)) * 1000,
+        'ffv1_mean_error_mm': float(np.mean(ffv1_errors)) * 1000,
+        'hue_max_error_mm': float(np.max(hue_errors)) * 1000,
+        'hue_mean_error_mm': float(np.mean(hue_errors)) * 1000
     }
 
 
@@ -274,14 +276,18 @@ def main():
 
         # Test REAL round-trip precision using the actual encoded video
         print(f"\nTesting actual round-trip precision...")
-        precision = test_real_roundtrip_precision(frames[0], hue_path, WIDTH, HEIGHT)
-        if 'error' not in precision:
-            print(f"Real Precision Analysis:")
-            print(f"   FFV1 16-bit: max={precision['ffv1_max_error_mm']:.2f}mm, mean={precision['ffv1_mean_error_mm']:.2f}mm")
-            print(f"   Hue Codec:   max={precision['hue_max_error_mm']:.2f}mm, mean={precision['hue_mean_error_mm']:.2f}mm")
-            print(f"   Valid pixels: {precision['valid_pixels']}/{WIDTH*HEIGHT}")
-        else:
-            print(f"Precision test failed, using fallback")
+        try:
+            precision = test_real_roundtrip_precision(frames[0], hue_path, WIDTH, HEIGHT)
+            if 'error' not in precision:
+                print(f"Real Precision Analysis:")
+                print(f"   FFV1 16-bit: max={precision['ffv1_max_error_mm']:.2f}mm, mean={precision['ffv1_mean_error_mm']:.2f}mm")
+                print(f"   Hue Codec:   max={precision['hue_max_error_mm']:.2f}mm, mean={precision['hue_mean_error_mm']:.2f}mm")
+                print(f"   Valid pixels: {precision['valid_pixels']}/{WIDTH*HEIGHT}")
+            else:
+                print(f"Precision test failed, using fallback")
+                precision = test_precision_fallback()
+        except Exception as e:
+            print(f"Precision test failed ({e}), using fallback")
             precision = test_precision_fallback()
 
         # Benchmark FFV1
