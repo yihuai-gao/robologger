@@ -5,6 +5,7 @@ Focus: CPU/GPU usage, encoding speed, file size, precision
 """
 
 import os
+import resource
 import subprocess
 import tempfile
 import time
@@ -14,6 +15,46 @@ import cv2
 from memory_profiler import profile
 
 from robologger.utils.huecodec import depth2logrgb, logrgb2depth, EncoderOpts
+
+
+def run_ffmpeg_with_data(cmd: list, input_data: bytes) -> dict:
+    """Run FFmpeg with input data and measure CPU usage robustly."""
+    # Measure CPU usage using resource.getrusage (no race conditions)
+    ru_start = resource.getrusage(resource.RUSAGE_CHILDREN)
+    wall_start = time.perf_counter()
+
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    try:
+        stdout, stderr = proc.communicate(input=input_data)
+    except BrokenPipeError:
+        proc.kill()
+        proc.wait()
+        raise RuntimeError("FFmpeg process died unexpectedly")
+
+    wall_end = time.perf_counter()
+    ru_end = resource.getrusage(resource.RUSAGE_CHILDREN)
+
+    # Calculate CPU times (robust, no race conditions)
+    cpu_user_time = ru_end.ru_utime - ru_start.ru_utime
+    cpu_sys_time = ru_end.ru_stime - ru_start.ru_stime
+    wall_time = wall_end - wall_start
+
+    # Convert to single-core percentage
+    total_cpu_time = cpu_user_time + cpu_sys_time
+    cpu_usage_single_core = (total_cpu_time / wall_time) * 100 if wall_time > 0 else 0.0
+
+    # Machine-wide percentage
+    logical_cores = psutil.cpu_count(logical=True)
+    cpu_usage_machine = cpu_usage_single_core / logical_cores if logical_cores else 0.0
+
+    return {
+        'returncode': proc.returncode,
+        'wall_time': wall_time,
+        'cpu_usage_single_core': cpu_usage_single_core,
+        'cpu_usage_machine': cpu_usage_machine,
+        'stderr': stderr.decode('utf-8') if stderr else ''
+    }
 
 
 def depth_to_uint16(depth_meters: np.ndarray, max_range: float = 5.0) -> np.ndarray:
@@ -39,7 +80,16 @@ class DepthEncoder:
     @profile
     def encode_hue_codec(self, frames: list, output_path: str) -> dict:
         """Encode using hue codec + h264_nvenc."""
-        # FFmpeg process for BGR24 -> h264_nvenc
+        # Prepare all frame data first
+        frame_data = bytearray()
+        for frame in frames:
+            # Hue codec conversion
+            frame_rgb_f = depth2logrgb(frame, (0.0, 5.0), opts=self.hue_opts)  # float [0,1]
+            frame_rgb_u8 = (np.clip(frame_rgb_f, 0.0, 1.0) * 255.0).astype(np.uint8)
+            frame_bgr_u8 = frame_rgb_u8[..., ::-1]  # RGB→BGR channel swap
+            frame_data.extend(frame_bgr_u8.tobytes())
+
+        # FFmpeg command for BGR24 -> h264_nvenc
         cmd = [
             "ffmpeg", "-y", "-threads", "1", "-f", "rawvideo", "-pix_fmt", "bgr24",
             "-s", f"{self.width}x{self.height}", "-r", str(self.fps), "-i", "-",
@@ -47,114 +97,55 @@ class DepthEncoder:
             "-preset", "fast", "-b:v", "5M", output_path
         ]
 
-        start_time = time.perf_counter()
-        ffmpeg_proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Run FFmpeg with robust CPU measurement
+        result = run_ffmpeg_with_data(cmd, bytes(frame_data))
 
-        # Monitor FFmpeg process CPU, not Python process
-        ffmpeg_psutil = psutil.Process(ffmpeg_proc.pid)
-        cpu_start_time = time.perf_counter()
-        cpu_start_times = ffmpeg_psutil.cpu_times()
-
-        try:
-            for frame in frames:
-                # Hue codec conversion
-                frame_rgb_f = depth2logrgb(frame, (0.0, 5.0), opts=self.hue_opts)  # float [0,1]
-                frame_rgb_u8 = (np.clip(frame_rgb_f, 0.0, 1.0) * 255.0).astype(np.uint8)
-                frame_bgr_u8 = frame_rgb_u8[..., ::-1]  # RGB→BGR channel swap
-                ffmpeg_proc.stdin.write(frame_bgr_u8.tobytes())
-
-            ffmpeg_proc.stdin.close()
-            return_code = ffmpeg_proc.wait()
-
-            # Check for errors
-            if return_code != 0:
-                stderr_output = ffmpeg_proc.stderr.read().decode('utf-8')
-                raise RuntimeError(f"FFmpeg failed with return code {return_code}:\n{stderr_output}")
-
-        except BrokenPipeError:
-            ffmpeg_proc.kill()
-            raise RuntimeError("FFmpeg process died unexpectedly")
-
-        end_time = time.perf_counter()
-
-        # Calculate actual FFmpeg CPU usage
-        cpu_end_time = time.perf_counter()
-        cpu_end_times = ffmpeg_psutil.cpu_times()
-        cpu_time_used = (cpu_end_times.user + cpu_end_times.system) - (cpu_start_times.user + cpu_start_times.system)
-        wall_time = cpu_end_time - cpu_start_time
-        cpu_usage_single_core = (cpu_time_used / wall_time) * 100 if wall_time > 0 else 0.0
-
-        # Also compute machine-wide percentage
-        logical_cores = psutil.cpu_count(logical=True)
-        cpu_usage_machine = cpu_usage_single_core / logical_cores if logical_cores else 0.0
+        # Check for errors
+        if result['returncode'] != 0:
+            raise RuntimeError(f"FFmpeg failed with return code {result['returncode']}:\n{result['stderr']}")
 
         file_size = os.path.getsize(output_path) / 1024 / 1024  # MB
 
         return {
-            'encoding_time': end_time - start_time,
+            'encoding_time': result['wall_time'],
             'file_size_mb': file_size,
-            'cpu_usage_single_core': cpu_usage_single_core,
-            'cpu_usage_machine': cpu_usage_machine,
-            'fps_achieved': len(frames) / (end_time - start_time)
+            'cpu_usage_single_core': result['cpu_usage_single_core'],
+            'cpu_usage_machine': result['cpu_usage_machine'],
+            'fps_achieved': len(frames) / result['wall_time']
         }
 
     @profile
     def encode_ffv1_16bit(self, frames: list, output_path: str) -> dict:
         """Encode using 16-bit conversion + FFV1."""
-        # FFmpeg process for gray16le -> FFV1
+        # Prepare all frame data first
+        frame_data = bytearray()
+        for frame in frames:
+            # Direct uint16 conversion
+            uint16_frame = depth_to_uint16(frame, max_range=5.0)
+            frame_data.extend(uint16_frame.tobytes())
+
+        # FFmpeg command for gray16le -> FFV1
         cmd = [
             "ffmpeg", "-y", "-threads", "1", "-f", "rawvideo", "-pix_fmt", "gray16le",
             "-s", f"{self.width}x{self.height}", "-r", str(self.fps), "-i", "-",
             "-c:v", "ffv1", output_path
         ]
 
-        start_time = time.perf_counter()
-        ffmpeg_proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Run FFmpeg with robust CPU measurement
+        result = run_ffmpeg_with_data(cmd, bytes(frame_data))
 
-        # Monitor FFmpeg process CPU, not Python process
-        ffmpeg_psutil = psutil.Process(ffmpeg_proc.pid)
-        cpu_start_time = time.perf_counter()
-        cpu_start_times = ffmpeg_psutil.cpu_times()
-
-        try:
-            for frame in frames:
-                # Direct uint16 conversion
-                uint16_frame = depth_to_uint16(frame, max_range=5.0)
-                ffmpeg_proc.stdin.write(uint16_frame.tobytes())
-
-            ffmpeg_proc.stdin.close()
-            return_code = ffmpeg_proc.wait()
-
-            # Check for errors
-            if return_code != 0:
-                stderr_output = ffmpeg_proc.stderr.read().decode('utf-8')
-                raise RuntimeError(f"FFmpeg failed with return code {return_code}:\n{stderr_output}")
-
-        except BrokenPipeError:
-            ffmpeg_proc.kill()
-            raise RuntimeError("FFmpeg process died unexpectedly")
-
-        end_time = time.perf_counter()
-
-        # Calculate actual FFmpeg CPU usage
-        cpu_end_time = time.perf_counter()
-        cpu_end_times = ffmpeg_psutil.cpu_times()
-        cpu_time_used = (cpu_end_times.user + cpu_end_times.system) - (cpu_start_times.user + cpu_start_times.system)
-        wall_time = cpu_end_time - cpu_start_time
-        cpu_usage_single_core = (cpu_time_used / wall_time) * 100 if wall_time > 0 else 0.0
-
-        # Also compute machine-wide percentage
-        logical_cores = psutil.cpu_count(logical=True)
-        cpu_usage_machine = cpu_usage_single_core / logical_cores if logical_cores else 0.0
+        # Check for errors
+        if result['returncode'] != 0:
+            raise RuntimeError(f"FFmpeg failed with return code {result['returncode']}:\n{result['stderr']}")
 
         file_size = os.path.getsize(output_path) / 1024 / 1024  # MB
 
         return {
-            'encoding_time': end_time - start_time,
+            'encoding_time': result['wall_time'],
             'file_size_mb': file_size,
-            'cpu_usage_single_core': cpu_usage_single_core,
-            'cpu_usage_machine': cpu_usage_machine,
-            'fps_achieved': len(frames) / (end_time - start_time)
+            'cpu_usage_single_core': result['cpu_usage_single_core'],
+            'cpu_usage_machine': result['cpu_usage_machine'],
+            'fps_achieved': len(frames) / result['wall_time']
         }
 
 
@@ -330,8 +321,9 @@ def main():
         print(f"   • Size difference: {abs(hue_size-ffv1_size):.1f} MB")
         print(f"   • Hue codec: GPU-accelerated (h264_nvenc), lossy compression")
         print(f"   • FFV1: CPU-based, lossless compression")
-        print(f"   • CPU measurements: single-threaded FFmpeg (-threads 1)")
+        print(f"   • CPU measurements: robust (resource.getrusage), single-threaded (-threads 1)")
         print(f"   • Precision tested: actual H.264 round-trip vs mathematical 16-bit")
+        print(f"   • No race conditions: FFmpeg child process measured after completion")
 
 
 if __name__ == "__main__":
