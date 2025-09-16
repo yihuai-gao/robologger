@@ -17,6 +17,50 @@ from memory_profiler import profile
 from robologger.utils.huecodec import depth2logrgb, logrgb2depth, EncoderOpts
 
 
+def check_nvenc_support() -> bool:
+    """Check if NVENC hardware encoding is available."""
+    try:
+        # Try to get list of available encoders
+        result = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-encoders"],
+            capture_output=True, text=True, timeout=10
+        )
+
+        if result.returncode == 0:
+            # Check if h264_nvenc is in the output
+            nvenc_available = "h264_nvenc" in result.stdout
+            print(f"   NVENC availability check: {'✓ Available' if nvenc_available else '✗ Not available'}")
+            return nvenc_available
+        else:
+            print("   NVENC availability check: ✗ FFmpeg query failed")
+            return False
+
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        print("   NVENC availability check: ✗ FFmpeg not found or timeout")
+        return False
+
+
+def check_nvidia_gpu() -> bool:
+    """Check if NVIDIA GPU is present."""
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=5
+        )
+
+        if result.returncode == 0 and result.stdout.strip():
+            gpu_names = result.stdout.strip().split('\n')
+            print(f"   NVIDIA GPU(s): {', '.join(gpu_names)}")
+            return True
+        else:
+            print("   NVIDIA GPU: ✗ No NVIDIA GPUs found")
+            return False
+
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        print("   NVIDIA GPU: ✗ nvidia-smi not found")
+        return False
+
+
 def run_ffmpeg_with_data(cmd: list, input_data: bytes) -> dict:
     """Run FFmpeg with input data and measure CPU usage robustly."""
     # Measure CPU usage using resource.getrusage (no race conditions)
@@ -98,7 +142,10 @@ class DepthEncoder:
         ]
 
         # Debug: print command and data size
+        expected_bytes = self.width * self.height * 3 * len(frames)  # BGR24 = 3 bytes per pixel
         print(f"   Hue codec: {len(frame_data)} bytes of frame data")
+        print(f"   Expected: {expected_bytes} bytes ({self.width}x{self.height}x3x{len(frames)})")
+        print(f"   Match: {'✓' if len(frame_data) == expected_bytes else '✗'}")
         print(f"   Command: {' '.join(cmd[:8])}...")
 
         # Run FFmpeg with robust CPU measurement
@@ -107,7 +154,8 @@ class DepthEncoder:
         # Check for errors and debug
         print(f"   FFmpeg return code: {result['returncode']}")
         if result['stderr']:
-            print(f"   FFmpeg stderr: {result['stderr'][:500]}...")
+            print(f"   FFmpeg stderr (full):")
+            print(result['stderr'])
 
         if result['returncode'] != 0:
             raise RuntimeError(f"FFmpeg failed with return code {result['returncode']}:\n{result['stderr']}")
@@ -120,14 +168,64 @@ class DepthEncoder:
         print(f"   Output file size: {file_size:.1f} MB")
 
         if file_size == 0:
-            raise RuntimeError(f"FFmpeg created empty file: {output_path}\nStderr: {result['stderr']}")
+            print(f"   NVENC created 0MB file. Testing with single frame...")
 
+            # Test with just first frame to debug
+            single_frame = frame_data[:self.width * self.height * 3]
+            test_cmd = [
+                "ffmpeg", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24",
+                "-s", f"{self.width}x{self.height}", "-i", "-",
+                "-c:v", "h264_nvenc", "-frames:v", "1", "-f", "null", "-"
+            ]
+
+            try:
+                test_result = subprocess.run(test_cmd, input=single_frame,
+                                           capture_output=True, timeout=10)
+                print(f"   Single frame test return code: {test_result.returncode}")
+                if test_result.stderr:
+                    print(f"   Single frame stderr: {test_result.stderr.decode()[:200]}...")
+            except Exception as e:
+                print(f"   Single frame test failed: {e}")
+
+            print(f"   Trying software H.264 fallback...")
+            # Fallback to software H.264 if NVENC fails
+            cmd_fallback = [
+                "ffmpeg", "-y", "-threads", "1", "-f", "rawvideo", "-pix_fmt", "bgr24",
+                "-s", f"{self.width}x{self.height}", "-r", str(self.fps), "-i", "-",
+                "-c:v", "libx264", "-pix_fmt", "yuv444p", "-profile:v", "high444",
+                "-preset", "fast", "-crf", "18", output_path
+            ]
+
+            result = run_ffmpeg_with_data(cmd_fallback, bytes(frame_data))
+            print(f"   Software H.264 return code: {result['returncode']}")
+
+            if result['returncode'] != 0:
+                raise RuntimeError(f"Both NVENC and software H.264 failed:\nNVENC stderr: {result['stderr']}")
+
+            file_size = os.path.getsize(output_path) / 1024 / 1024  # MB
+            print(f"   Software H.264 file size: {file_size:.1f} MB")
+
+            if file_size == 0:
+                raise RuntimeError(f"Software H.264 also created empty file\nStderr: {result['stderr']}")
+
+            # Update the result to use software encoding metrics
+            return {
+                'encoding_time': result['wall_time'],
+                'file_size_mb': file_size,
+                'cpu_usage_single_core': result['cpu_usage_single_core'],
+                'cpu_usage_machine': result['cpu_usage_machine'],
+                'fps_achieved': len(frames) / result['wall_time'],
+                'encoder_used': 'libx264_software'
+            }
+
+        # NVENC succeeded
         return {
             'encoding_time': result['wall_time'],
             'file_size_mb': file_size,
             'cpu_usage_single_core': result['cpu_usage_single_core'],
             'cpu_usage_machine': result['cpu_usage_machine'],
-            'fps_achieved': len(frames) / result['wall_time']
+            'fps_achieved': len(frames) / result['wall_time'],
+            'encoder_used': 'h264_nvenc'
         }
 
     @profile
@@ -341,7 +439,14 @@ def main():
         print(f"   • FFV1 provides {65536/1024:.0f}x more precision levels (16-bit vs ~10-bit)")
         print(f"   • Speed difference: {abs(hue_fps-ffv1_fps):.1f} fps")
         print(f"   • Size difference: {abs(hue_size-ffv1_size):.1f} MB")
-        print(f"   • Hue codec: GPU-accelerated (h264_nvenc), lossy compression")
+
+        # Show which encoder was actually used
+        encoder_used = hue_results.get('encoder_used', 'unknown')
+        if encoder_used == 'h264_nvenc':
+            print(f"   • Hue codec: GPU-accelerated (h264_nvenc), lossy compression")
+        else:
+            print(f"   • Hue codec: CPU-based (libx264), lossy compression - NVENC fallback")
+
         print(f"   • FFV1: CPU-based, lossless compression")
         print(f"   • CPU measurements: robust (resource.getrusage), single-threaded (-threads 1)")
         print(f"   • Precision tested: actual H.264 round-trip vs mathematical 16-bit")
