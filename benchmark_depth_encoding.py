@@ -97,14 +97,30 @@ class DepthEncoder:
             "-preset", "fast", "-b:v", "5M", output_path
         ]
 
+        # Debug: print command and data size
+        print(f"   Hue codec: {len(frame_data)} bytes of frame data")
+        print(f"   Command: {' '.join(cmd[:8])}...")
+
         # Run FFmpeg with robust CPU measurement
         result = run_ffmpeg_with_data(cmd, bytes(frame_data))
 
-        # Check for errors
+        # Check for errors and debug
+        print(f"   FFmpeg return code: {result['returncode']}")
+        if result['stderr']:
+            print(f"   FFmpeg stderr: {result['stderr'][:500]}...")
+
         if result['returncode'] != 0:
             raise RuntimeError(f"FFmpeg failed with return code {result['returncode']}:\n{result['stderr']}")
 
+        # Check if file was actually created
+        if not os.path.exists(output_path):
+            raise RuntimeError(f"FFmpeg completed but output file not created: {output_path}")
+
         file_size = os.path.getsize(output_path) / 1024 / 1024  # MB
+        print(f"   Output file size: {file_size:.1f} MB")
+
+        if file_size == 0:
+            raise RuntimeError(f"FFmpeg created empty file: {output_path}\nStderr: {result['stderr']}")
 
         return {
             'encoding_time': result['wall_time'],
