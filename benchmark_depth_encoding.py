@@ -164,10 +164,11 @@ class DepthEncoder:
         if not os.path.exists(output_path):
             raise RuntimeError(f"FFmpeg completed but output file not created: {output_path}")
 
-        file_size = os.path.getsize(output_path) / 1024 / 1024  # MB
-        print(f"   Output file size: {file_size:.1f} MB")
+        file_size_bytes = os.path.getsize(output_path)
+        file_size_mb = file_size_bytes / 1024 / 1024
+        print(f"   Output file size: {file_size_bytes} bytes ({file_size_mb:.3f} MB)")
 
-        if file_size == 0:
+        if file_size_bytes == 0:
             print(f"   NVENC created 0MB file. Testing with single frame...")
 
             # Test with just first frame to debug
@@ -221,7 +222,7 @@ class DepthEncoder:
         # NVENC succeeded
         return {
             'encoding_time': result['wall_time'],
-            'file_size_mb': file_size,
+            'file_size_mb': file_size_mb,
             'cpu_usage_single_core': result['cpu_usage_single_core'],
             'cpu_usage_machine': result['cpu_usage_machine'],
             'fps_achieved': len(frames) / result['wall_time'],
