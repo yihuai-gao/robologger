@@ -10,16 +10,51 @@ from loguru import logger
 class CtrlLogger(BaseLogger):
     """Logger for robot control data (joint and/or cartesian control).
 
+    Usage:
+        # EEF-controlled arm that can observe joints
+        logger = CtrlLogger(
+            name="right_arm", endpoint="tcp://localhost:5555", attr={"num_joints": 7},
+            log_eef_pose=True, log_joint_positions=True, target_type="eef_pose", joint_units="radians"
+        )
+        logger.log_state(state_timestamp=t, state_pos_xyz=pos, state_quat_wxyz=quat, state_joint_pos=joints)
+        logger.log_target(target_timestamp=t, target_pos_xyz=target_pos, target_quat_wxyz=target_quat)
+
+        # Joint-controlled arm that can infer EEF pose (common - log both)
+        logger = CtrlLogger(
+            name="left_arm", endpoint="tcp://localhost:5557", attr={"num_joints": 7},
+            log_eef_pose=True, log_joint_positions=True, target_type="joint_positions", joint_units="radians"
+        )
+        logger.log_state(state_timestamp=t, state_pos_xyz=pos, state_quat_wxyz=quat, state_joint_pos=joints)
+        logger.log_target(target_timestamp=t, target_joint_pos=target_pos)
+
+        # Joint-controlled gripper (meters, cannot infer EEF pose)
+        logger = CtrlLogger(
+            name="right_end_effector", endpoint="tcp://localhost:5556", attr={"num_joints": 1},
+            log_eef_pose=False, log_joint_positions=True, target_type="joint_positions", joint_units="meters"
+        )
+        logger.log_state(state_timestamp=t, state_joint_pos=joint_pos)
+        logger.log_target(target_timestamp=t, target_joint_pos=target_pos)
+
+    Configuration:
+        log_eef_pose: Log end-effector pose (xyz + quaternion)
+        log_joint_positions: Log joint positions
+        target_type: Control target type ("eef_pose" or "joint_positions")
+        joint_units: Joint units ("radians", "meters", or None if not logging joints)
+
+    Notes:
+        - Joint-controlled robots can often infer EEF pose via forward kinematics.
+          Set log_eef_pose=True to log both joint positions and inferred EEF pose.
+        - EEF-controlled robots may have joint encoders. Set log_joint_positions=True
+          to log both EEF pose and observed joint positions.
+
+    Constraints:
+        - At least one of log_eef_pose or log_joint_positions must be True
+        - target_type must match a logged observation type
+        - joint_units required if log_joint_positions=True, None otherwise
+        - attr["num_joints"] required if log_joint_positions=True
+
     Naming Convention:
-    - Must use RobotName enum values: right_arm, left_arm, head, body, left_end_effector, right_end_effector
-
-    Configuration Flags:
-    - log_eef_pose: bool - Whether to log end-effector pose (xyz + quat)
-    - log_joint_positions: bool - Whether to log joint positions
-    - target_type: "eef_pose" or "joint_positions" - Type of control target
-    - joint_units: "radians", "meters", or None - Units for joint positions (None if not logging joints)
-
-    At least one of log_eef_pose or log_joint_positions must be True.
+        Must use RobotName enum: right_arm, left_arm, head, body, left_end_effector, right_end_effector
     """
     def __init__(
         self,
