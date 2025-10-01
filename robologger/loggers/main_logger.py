@@ -32,7 +32,7 @@ class MainLogger:
         logger_endpoints: Dict[str, str], # {logger_name: logger_endpoint}
         morphology: Morphology,
         is_demonstration: bool = False,
-        success_config: Union[str, bool, None] = None,
+        success_config: str = "none",
         # attr: dict,
     ):
         setup_logging()
@@ -66,48 +66,12 @@ class MainLogger:
         self.is_recording: bool = False
 
         # init success tracking
-        self._parse_success_config(success_config)
-
+        success_config_options = ["none", "input_true", "input_false", "hardcode_true", "hardcode_false"]
+        assert success_config.lower() in success_config_options, f"Invalid success_config: {success_config}. Must be one of: {success_config_options}"
+        self.success_config = success_config.lower()
 
         register(self.on_exit)
 
-    def _parse_success_config(self, config):
-        self._success_config_provided = config is not None  
-
-        self.success_mode = "none"
-        self.is_successful = None
-        self.default_success = None
-        self.hardcode_success = None
-
-        if config is None:
-            return
-
-        if isinstance(config, bool):
-            self.success_mode = "hardcode"
-            self.hardcode_success = config
-            return
-
-        if isinstance(config, str):
-            c = config.strip().lower()
-            if c == "input_true":
-                self.success_mode = "input"
-                self.default_success = True
-            elif c == "input_false":
-                self.success_mode = "input"
-                self.default_success = False
-            elif c == "true":
-                self.success_mode = "hardcode"
-                self.hardcode_success = True
-            elif c == "false":
-                self.success_mode = "hardcode"
-                self.hardcode_success = False
-            else:
-                raise ValueError(
-                    f"Invalid success_config: {config}. Must be one of: "
-                    "None (default to none), 'input_true', 'input_false', True, or False\n"
-                    f"Got: {config}\n"
-                    f"Read docstring for more information."
-                )
 
     def _init_metadata(self, episode_dir: str):
         metadata_path = os.path.join(episode_dir, "metadata.zarr")
@@ -115,15 +79,13 @@ class MainLogger:
         assert self.zarr_group is not None, "Zarr group is not initialized"
         logger.info(f"Initialized zarr group: {metadata_path}")
 
-    def _store_metadata(self):
+    def _store_metadata(self, is_successful: Optional[bool]):
         self.zarr_group.attrs["project_name"] = self.project_name
         self.zarr_group.attrs["task_name"] = self.task_name
         self.zarr_group.attrs["run_name"] = self.run_name
         self.zarr_group.attrs["morphology"] = self.morphology.value
         self.zarr_group.attrs["is_demonstration"] = self.is_demonstration
-        
-        if self._success_config_provided and self.is_successful is not None:
-            self.zarr_group.attrs["is_successful"] = bool(self.is_successful)
+        self.zarr_group.attrs["is_successful"] = is_successful
 
     def on_exit(self):
         if self.is_recording:
@@ -169,6 +131,8 @@ class MainLogger:
         for logger_name, _ in self.logger_endpoints.items():
             self.clients[logger_name].put_data(topic="command", data=serialize({"type": "start", "episode_dir": episode_dir}))
 
+        return self.episode_idx
+
     def get_alive_loggers(self) -> List[str]:
         alive_loggers: List[str] = []
         for logger_name, client in self.clients.items():
@@ -182,14 +146,15 @@ class MainLogger:
     def stop_recording(self):
         if not self.is_recording:
             raise RuntimeError("Not recording, but received stop command in main logger")
-        self._handle_success_setting()
-        self._store_metadata()
         self.is_recording = False
         alive_loggers = self.get_alive_loggers()
         for logger_name in alive_loggers:
             self.clients[logger_name].put_data(topic="command", data=serialize({"type": "stop"}))
             episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}")
         logger.info(f"Stopped recording for {len(alive_loggers)} loggers. Data has been saved to {episode_dir}")
+        is_successful = self._get_is_successful()
+        self._store_metadata(is_successful)
+        return self.episode_idx
 
     def _get_next_episode_idx(self) -> int:
         """Find the next available episode index."""
@@ -208,20 +173,26 @@ class MainLogger:
         
         return max(existing_episodes, default=-1) + 1
 
-    def _handle_success_setting(self):
+    def _get_is_successful(self) -> Union[None, bool]:
         """Handle success setting based on configured mode."""
-        if self.success_mode == "hardcode":
-            self.is_successful = self.hardcode_success
-        elif self.success_mode == "input":
-            self._prompt_for_success()
+        if self.success_mode.startswith("hardcode"):
+            is_successful = self.success_mode == "hardcode_true"
+            logger.info(f"[MainLogger] Episode {self.episode_idx} marked as {'successful' if is_successful else 'failed'} (hardcoded).")
+        elif self.success_mode.startswith("input"):
+            is_successful = self._prompt_for_success()
+            logger.info(f"[MainLogger] Episode {self.episode_idx} marked as {'successful' if is_successful else 'failed'} (user input).")
         elif self.success_mode == "none":
             # if success_config was None, don't set is_successful
+            is_successful = None
             logger.info("[MainLogger] Success mode is none, not setting is_successful. To set episode success manually, use set_successful(bool) method.")
-            return
+        else:
+            raise ValueError(f"Invalid success_mode: {self.success_mode}")
+        
+        return is_successful
 
     def _prompt_for_success(self):
         """Prompt user for episode success status."""
-        if self.default_success:
+        if self.success_config.endswith("true"):
             prompt = "Was this episode successful? [Y/n]: "
             default_response = "Y"
         else:
@@ -237,24 +208,20 @@ class MainLogger:
                     user_input = default_response
                 
                 # process response
-                if user_input.lower() in ['y', 'yes']:
-                    self.is_successful = True
-                    break
-                elif user_input.lower() in ['n', 'no']:
-                    self.is_successful = False
-                    break
+                if user_input.lower() in ['y']:
+                    return True
+                elif user_input.lower() in ['n']:
+                    return False
                 else:
                     logger.warning("Please enter 'y' for yes or 'n' for no.")
             except (EOFError, KeyboardInterrupt):
                 # handle Ctrl+C or EOF gracefully
-                logger.warning(f"\nUsing default response: {self.default_success}")
-                self.is_successful = self.default_success
-                break
+                return None
 
-    def set_successful(self, is_successful: bool):
-        """Manually set the success status for the current episode."""
-        self.is_successful = is_successful
-        logger.info(f"Episode {self.episode_idx} success status manually set to: {is_successful}")
+    # def set_successful(self, is_successful: bool):
+    #     """Manually set the success status for the current episode."""
+    #     self.is_successful = is_successful
+    #     logger.info(f"Episode {self.episode_idx} success status manually set to: {is_successful}")
 
     def _is_video_logger(self, name: str) -> bool:
         """Check if logger name matches CameraName enum pattern (indicates video logger)."""
