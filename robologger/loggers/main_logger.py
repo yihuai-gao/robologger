@@ -12,15 +12,14 @@ import zarr
 class MainLogger:
     """
     Main logger coordinating multiple sub-loggers.
-    
+
     Args:
         success_config: Controls how episode success is determined after stop_recording():
-            - None (default): Does not set is_successful (no prompt, no value assigned)
+            - "none": Does not set is_successful (no prompt, no value assigned)
             - "input_true": Prompt user with [Y/n], defaults to successful
             - "input_false": Prompt user with [y/N], defaults to failed
-            - True (bool or str): Always mark episodes as successful (no prompt)
-            - False (bool or str): Always mark episodes as failed (no prompt)
-            Note: Users can always override manually using set_successful(bool)
+            - "hardcode_true": Always mark episodes as successful (no prompt)
+            - "hardcode_false": Always mark episodes as failed (no prompt)
     """
     def __init__(
         self,
@@ -63,6 +62,7 @@ class MainLogger:
             self.clients[logger_name] = RMQClient(client_name=logger_name, server_endpoint=logger_endpoint)
 
         self.episode_idx: int = -1
+        self.last_episode_idx: Optional[int] = None  # track last COMPLETED episode
         self.is_recording: bool = False
 
         # init success tracking
@@ -154,6 +154,7 @@ class MainLogger:
         logger.info(f"Stopped recording for {len(alive_loggers)} loggers. Data has been saved to {episode_dir}")
         is_successful = self._get_is_successful()
         self._store_metadata(is_successful)
+        self.last_episode_idx = self.episode_idx  # Track COMPLETED episode
         return self.episode_idx
 
     def _get_next_episode_idx(self) -> int:
@@ -175,19 +176,19 @@ class MainLogger:
 
     def _get_is_successful(self) -> Union[None, bool]:
         """Handle success setting based on configured mode."""
-        if self.success_mode.startswith("hardcode"):
-            is_successful = self.success_mode == "hardcode_true"
+        if self.success_config.startswith("hardcode"):
+            is_successful = self.success_config == "hardcode_true"
             logger.info(f"[MainLogger] Episode {self.episode_idx} marked as {'successful' if is_successful else 'failed'} (hardcoded).")
-        elif self.success_mode.startswith("input"):
+        elif self.success_config.startswith("input"):
             is_successful = self._prompt_for_success()
             logger.info(f"[MainLogger] Episode {self.episode_idx} marked as {'successful' if is_successful else 'failed'} (user input).")
-        elif self.success_mode == "none":
+        elif self.success_config == "none":
             # if success_config was None, don't set is_successful
             is_successful = None
             logger.info("[MainLogger] Success mode is none, not setting is_successful. To set episode success manually, use set_successful(bool) method.")
         else:
-            raise ValueError(f"Invalid success_mode: {self.success_mode}")
-        
+            raise ValueError(f"Invalid success_config: {self.success_config}")
+
         return is_successful
 
     def _prompt_for_success(self):
@@ -228,11 +229,41 @@ class MainLogger:
         pattern = re.compile(r'^(' + '|'.join(re.escape(cam.value) for cam in CameraName) + r')(\d+)$')
         return pattern.match(name) is not None
 
+    def delete_last_episode(self) -> Optional[int]:
+        """Delete the most recently completed episode.
+
+        Returns:
+            Episode index if deleted, None if no episode to delete or recording is active.
+            Always check for None before using the returned value.
+        """
+        if self.is_recording:
+            logger.warning("[Dump Last Episode] Cannot delete episode while recording is active")
+            return None
+
+        if self.last_episode_idx is None:
+            logger.warning("[Dump Last Episode] Try to delete, but there is no tracked completed episode to delete")
+            return None
+
+        episode_dir = os.path.join(self.run_dir, f"episode_{self.last_episode_idx:06d}")
+
+        if not os.path.exists(episode_dir):
+            logger.warning(f"[Dump Last Episode] Episode {self.last_episode_idx} directory not found at {episode_dir}, cannot delete")
+            self.last_episode_idx = None
+            return None
+
+        logger.info(f"[Dump Last Episode] Deleting episode {self.last_episode_idx}: {episode_dir}")
+        shutil.rmtree(episode_dir)
+
+        deleted_idx = self.last_episode_idx
+        self.last_episode_idx = None  # clear after deletion
+
+        return deleted_idx
+
     def _validate_video_logger_names(self):
         """Validate all video logger names for pattern compliance and zero-indexed continuity."""
         video_loggers = {}  # {camera_base: [indices]}
         pattern = re.compile(r'^(' + '|'.join(re.escape(cam.value) for cam in CameraName) + r')(\d+)$')
-        
+
         # group video loggers by camera base name
         for logger_name in self.logger_endpoints.keys():
             match = pattern.match(logger_name)
@@ -241,7 +272,7 @@ class MainLogger:
                 if base_name not in video_loggers:
                     video_loggers[base_name] = []
                 video_loggers[base_name].append(int(index))
-        
+
         # validate zero-indexed continuity for each camera type
         for base_name, indices in video_loggers.items():
             indices.sort()
@@ -251,7 +282,7 @@ class MainLogger:
                 expected_names = [f"{base_name}{i}" for i in expected]
                 raise ValueError(
                     f"Multiple VideoLoggers of type '{base_name}' must use zero-indexed continuous naming.\n"
-                    f"Current loggers: {logger_names}\n" 
+                    f"Current loggers: {logger_names}\n"
                     f"Expected naming sequence: {expected_names}\n"
                     f"Please rename to follow continuous zero-indexing: {base_name}0, {base_name}1, {base_name}2, etc."
                 )
