@@ -7,22 +7,18 @@ project_name/
 │       └── episode_XXXXXX/ # padded to 6 digits
 │           ├── metadata.zarr/
 │           │   └── .zattrs (project_name, task_name, run_name, morphology, is_demonstration, is_successful)
-│           ├── {robot_name}.zarr/ # e.g., right_arm.zarr - cartesian control logger
+│           ├── {robot_name}.zarr/ # e.g., right_arm.zarr - unified control logger
 │           │   ├── state_timestamps
+│           │   ├── target_timestamps
+│           │   # EEF pose datasets (if log_eef_pose=True):
 │           │   ├── state_pos_xyz
 │           │   ├── state_quat_wxyz
-│           │   ├── target_timestamps
 │           │   ├── target_pos_xyz
 │           │   ├── target_quat_wxyz
-│           │   └── .zattrs (ctrl_freq, robot_name)
-│           ├── {robot_name}.zarr/ # e.g., right_end_effector.zarr - joint control logger
-│           │   ├── state_timestamps
-│           │   ├── target_timestamps
+│           │   # Joint datasets (if log_joint_positions=True):
 │           │   ├── state_joint_pos
 │           │   ├── target_joint_pos
-│           │   ├── state_joint_vel (optional)
-│           │   ├── state_joint_torque (optional)
-│           │   └── .zattrs (ctrl_freq, num_joints, robot_name)
+│           │   └── .zattrs (target_type, log_eef_pose, log_joint_positions, joint_units, num_joints)
 │           ├── {camera_system_name}_{idx}.zarr/ # e.g., right_wrist_camera_0.zarr for video logger
 │           │   ├── {actual_camera_name}_timestamps # e.g., main_timestamps, depth_timestamps, ultrawide_timestamps
 │           │   ├── {actual_camera_name}.mp4         # e.g., main.mp4, depth.mp4, ultrawide.mp4

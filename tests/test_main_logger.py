@@ -8,8 +8,8 @@ logger = MainLogger(
     task_name="test_task",
     run_name="test_run",
     logger_endpoints={
-        "test_video_logger": "tcp://localhost:55555",
-        "test_cartesian_ctrl_logger": "tcp://localhost:55556",
+        "right_wrist_camera_0": "tcp://localhost:55555",
+        "right_arm": "tcp://localhost:55556",
     },
 )
 

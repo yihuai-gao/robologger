@@ -106,8 +106,8 @@ class MainLogger:
             logger.warning("Already recording, stopping current recording")
             self.stop_recording()
 
-        self.is_recording = True
         self.validate_logger_endpoints()
+        self.is_recording = True
 
         if episode_idx is not None:
             self.episode_idx = episode_idx
@@ -145,12 +145,13 @@ class MainLogger:
 
     def stop_recording(self):
         if not self.is_recording:
-            raise RuntimeError("Not recording, but received stop command in main logger")
+            logger.warning("Not recording, ignoring stop command in main logger")
+            return None # TODO: Should we raise an error instead?
         self.is_recording = False
         alive_loggers = self.get_alive_loggers()
         for logger_name in alive_loggers:
             self.clients[logger_name].put_data(topic="command", data=serialize({"type": "stop"}))
-            episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}")
+        episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}")
         logger.info(f"Stopped recording for {len(alive_loggers)} loggers. Data has been saved to {episode_dir}")
         is_successful = self._get_is_successful()
         self._store_metadata(is_successful)
@@ -209,14 +210,17 @@ class MainLogger:
                     user_input = default_response
                 
                 # process response
-                if user_input.lower() in ['y']:
+                if user_input.lower() in ['y', 'yes']:
+                    logger.info("Episode marked as successful")
                     return True
-                elif user_input.lower() in ['n']:
+                elif user_input.lower() in ['n', 'no']:
+                    logger.info("Episode marked as failed")
                     return False
                 else:
-                    logger.warning("Please enter 'y' for yes or 'n' for no.")
+                    logger.info("Please enter 'y' for yes or 'n' for no.")
             except (EOFError, KeyboardInterrupt):
                 # handle Ctrl+C or EOF gracefully
+                logger.info("\nEpisode success status cancelled")
                 return None
 
     # def set_successful(self, is_successful: bool):

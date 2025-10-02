@@ -110,7 +110,10 @@ class VideoLogger(BaseLogger):
                       mp4_file_path,
                   ]
                 self.ffmpeg_processes[cam_name] = subprocess.Popen(
-                    ffmpeg_cmd, stdin=subprocess.PIPE 
+                    ffmpeg_cmd,
+                    stdin=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,  # Remove to see ffmpeg encoding output
+                    stdout=subprocess.DEVNULL   # Remove to see ffmpeg encoding output
                 )
                 logger.info(f"[{self.name}] Initialized ffmpeg process for camera: {cam_name}")
         except Exception as e:

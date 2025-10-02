@@ -1,13 +1,17 @@
 import time
-from robologger.loggers.cartesian_ctrl_logger import CartesianCtrlLogger
+from robologger.loggers.ctrl_logger import CtrlLogger
 import numpy as np
 
-logger = CartesianCtrlLogger(
-    name="test_cartesian_ctrl_logger",
+logger = CtrlLogger(
+    name="right_arm",  # Must use valid RobotName enum
     endpoint="tcp://localhost:55556",
     attr={
         "test_attr": "test_value",
     },
+    log_eef_pose=True,
+    log_joint_positions=False,
+    target_type="eef_pose",
+    joint_units=None
 )
 
 while True:
