@@ -2,124 +2,129 @@
 
 Examples showing how to integrate RoboLogger into a robot system.
 
-## Architecture
-
-RoboLogger uses a distributed design:
-- **Control loops** run independently at their own frequencies
-- **Main process** coordinates recording via RobotMQ commands
-- Data is only logged when recording is active
-
-```
-Main Process (where you setup keyboard control: s/e/y/n/q...)
-    │
-    ├─── Camera Loop (e.g.30 Hz)
-    ├─── Robot Loop (e.g.125 Hz)
-    └─── Gripper Loop (e.g.30 Hz)
-```
-
-## Files
-
-| File | Data Entries (.zarr) - Example Config | Logger Type |
-|------|---------|-------------|
-| `main_process.py` | `metadata.zarr/` (.zattrs: project_name, task_name, run_name, morphology, is_successful) | MainLogger |
-| `camera_loop.py` | `right_wrist_camera_0.zarr/` (3× .mp4: main, ultrawide, depth + 3× timestamps)* | VideoLogger |
-| `robot_control_loop.py` | `right_arm.zarr/` (4× pose arrays: state/target pos_xyz, quat_wxyz + 2× timestamps) | CtrlLogger (EEF control) |
-| `joint_arm_control_loop.py` | `right_arm.zarr/` (8× arrays: state/target pos_xyz, quat_wxyz, joint_pos + 2× timestamps) | CtrlLogger (Joint + EEF) |
-| `gripper_control_loop.py` | `right_end_effector.zarr/` (2× joint arrays: state/target joint_pos + 2× timestamps) | CtrlLogger (Joint control) |
-
-*Number of cameras, videos, and arrays depends on your configuration
+---
 
 ## Quick Start
 
-**Terminal 1-3+**: Start control loops (choose robot example based on your setup)
+### Step 1: Start Control Loops
+
+Open 3+ terminals and start the control loops. Choose the robot control example that matches your setup:
+
 ```bash
+# Terminal 1: Camera loop
 python examples/camera_loop.py
 
-# Choose ONE of these robot control examples:
-python examples/robot_control_loop.py        # Cartesian/EEF-controlled arm
-python examples/joint_arm_control_loop.py    # Joint-controlled arm (most common)
+# Terminal 2: Robot control (choose ONE)
+python examples/robot_control_loop.py        # Cartesian/EEF control (minimal logging)
+python examples/joint_arm_control_loop.py    # Joint control (RECOMMENDED - full data)
 
+# Terminal 3: Gripper control
 python examples/gripper_control_loop.py
 ```
 
-**Terminal 4**: Start main process
+### Step 2: Start Main Process
+
 ```bash
+# Terminal 4: Main coordinator
 python examples/main_process.py
 ```
 
-**Keyboard controls**:
-- `s` - Start recording
-- `e` - End recording
-- `d` - Delete last episode
-- `y` - Mark last episode as successful
-- `n` - Mark last episode as failed
-- `q` - Quit
+### Step 3: Control Recording
 
-## Data Output
+Use keyboard commands in the main process terminal:
+
+| Key | Action |
+|-----|--------|
+| `s` | Start recording episode |
+| `e` | End recording episode |
+| `d` | Delete last COMPLETED episode |
+| `y` | Mark last episode as successful |
+| `n` | Mark last episode as failed |
+| `q` | Quit and shutdown |
+
+---
+
+## Architecture Overview
+
+RoboLogger uses a distributed design where control loops run independently and the main process coordinates recording:
+
+```
+Main Process (coordinator)
+    |
+    ├─── Camera Loop        (e.g. 30 Hz)
+    ├─── Robot Loop         (e.g. 125 Hz)
+    └─── Gripper Loop       (e.g. 30 Hz)
+```
+
+### Key Principles
+
+- Control loops run continuously at their own frequencies
+- Main process sends recording commands via RobotMQ
+- Data is only logged when recording is active
+- All timestamps use `time.monotonic()` for consistency
+- **State** = actual measured values
+- **Target** = commanded values
+
+---
+
+## Example Files Reference
+
+| File | Logger Type | Data Logged |
+|------|-------------|-------------|
+| `main_process.py` | MainLogger | Episode metadata (project, task, run, morphology, success) |
+| `camera_loop.py` | VideoLogger | Video streams (.mp4) with timestamps* |
+| `robot_control_loop.py` | CtrlLogger | EEF pose only (state + target) |
+| `joint_arm_control_loop.py` | CtrlLogger | (Inferred) EEF pose + joint positions (state + target) |
+| `gripper_control_loop.py` | CtrlLogger | Joint positions (state + target) |
+
+*Number of cameras and streams depends on configuration
+
+### Example Output Structure (when running joint_arm_control_loop.py)
 
 ```
 data/demo_project/demo_task/run_001/episode_000000/
-├── metadata.zarr/              # Episode info
-├── right_wrist_camera_0.zarr/  # Videos (MP4) + timestamps
-├── right_arm.zarr/             # Pose data (state + target) + timestamps
-└── right_end_effector.zarr/    # Joint data (state + target) + timestamps
+├── metadata.zarr/
+│   └── .zattrs                      # project_name, task_name, run_name, morphology, is_successful
+├── right_wrist_camera_0.zarr/
+│   ├── main.mp4
+│   ├── ultrawide.mp4
+│   ├── depth.mp4
+│   ├── main_timestamps/
+│   ├── ultrawide_timestamps/
+│   └── depth_timestamps/
+├── right_arm.zarr/
+│   ├── state_pos_xyz/
+│   ├── state_quat_wxyz/
+│   ├── target_pos_xyz/
+│   ├── target_quat_wxyz/
+│   ├── state_joint_pos/
+│   ├── target_joint_pos/
+│   ├── state_timestamps/
+│   └── target_timestamps/
+└── right_end_effector.zarr/
+    ├── state_joint_pos/
+    ├── target_joint_pos/
+    ├── state_timestamps/
+    └── target_timestamps/
 ```
 
-## Adapting to Your System
-
-### 1. Replace simulated data with your robot API
-```python
-# camera_loop.py - lines 70-81
-image = camera.capture()  # Replace simulated rainbow frames
-
-# robot_control_loop.py - lines 50-53
-state_pos_xyz, state_quat_wxyz = robot.get_eef_pose()
-
-# gripper_control_loop.py - lines 48-52
-state_joint_pos = gripper.get_width()
-
-# joint_arm_control_loop.py - lines 52-57
-state_joint_pos = robot.get_joint_positions()
-state_pos_xyz, state_quat_wxyz = robot.forward_kinematics(state_joint_pos)
-```
-
-### 2. Match endpoints across files
-`main_process.py` endpoints must match control loop endpoints (default: ports 55555-55557).
-
-### 3. Use valid logger names
-Names must match enums in `robologger/utils/classes.py`:
-- **Cameras**: `right_wrist_camera_0`, `head_camera_0` (continuous and zero-indexed)
-- **Robots**: `right_arm`, `left_arm`, `right_end_effector`, `left_end_effector`
-
-## Success Labeling
-
-Configure `success_config` in `MainLogger`:
-- `"none"` - Does not set is_successful (no prompt, no value assigned)
-- `"input_true"` - Prompt user with [Y/n], defaults to successful
-- `"input_false"` - Prompt user with [y/N], defaults to failed
-- `"hardcode_true"` - Always mark episodes as successful (no prompt)
-- `"hardcode_false"` - Always mark episodes as failed (no prompt)
-
-## Key Concepts
-
-- Control loops run continuously, only log when recording is active
-- Each loop runs at its own frequency independently
-- All timestamps use `time.monotonic()` for consistency
-- State = actual (measured), Target = commanded
+---
 
 ## CtrlLogger Configuration
 
-The unified `CtrlLogger` supports flexible control configurations:
+The unified `CtrlLogger` supports flexible control configurations for arms and grippers.
 
-### Configuration Options
-- `log_eef_pose`: Log end-effector pose (position + quaternion)
-- `log_joint_positions`: Log joint positions
-- `target_type`: Control target type (`"eef_pose"` or `"joint_positions"`)
-- `joint_units`: Joint units (`"radians"` or `"meters"`, or `None` if not logging joints)
+### Configuration Parameters
 
-### Common Use Cases
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `log_eef_pose` | bool | Log end-effector pose (position + quaternion) |
+| `log_joint_positions` | bool | Log joint positions |
+| `target_type` | str | Control mode: `"eef_pose"` or `"joint_positions"` |
+| `joint_units` | str | Joint units: `"radians"`, `"meters"`, or `None` |
 
-**1. EEF-controlled arm (Cartesian control)**
+### Use Case 1: EEF-Controlled Arm (Cartesian Control)
+
 ```python
 CtrlLogger(
     name="right_arm",
@@ -128,23 +133,29 @@ CtrlLogger(
     target_type="eef_pose",
     joint_units=None
 )
-# Log: state_pos_xyz, state_quat_wxyz, target_pos_xyz, target_quat_wxyz
 ```
 
-**2. Joint-controlled arm that can infer EEF pose (most common)**
+**Logged data:** `state_pos_xyz`, `state_quat_wxyz`, `target_pos_xyz`, `target_quat_wxyz`
+
+### Use Case 2: Joint-Controlled Arm with EEF Pose (RECOMMENDED)
+
 ```python
 CtrlLogger(
     name="left_arm",
     attr={"num_joints": 7},
-    log_eef_pose=True,          # Log inferred EEF pose via forward kinematics
-    log_joint_positions=True,   # Log joint positions
+    log_eef_pose=True,          # Computed via forward kinematics
+    log_joint_positions=True,
     target_type="joint_positions",
     joint_units="radians"
 )
-# Log: all EEF pose fields + state_joint_pos, target_joint_pos
 ```
 
-**3. Joint-controlled gripper (no EEF pose)**
+**Logged data:** All EEF pose fields + `state_joint_pos`, `target_joint_pos`
+
+**Why recommended:** Captures complete state information for replay and analysis.
+
+### Use Case 3: Joint-Controlled Gripper
+
 ```python
 CtrlLogger(
     name="right_end_effector",
@@ -152,20 +163,105 @@ CtrlLogger(
     log_eef_pose=False,
     log_joint_positions=True,
     target_type="joint_positions",
-    joint_units="meters"        # Gripper width in meters
+    joint_units="meters"
 )
-# Log: state_joint_pos, target_joint_pos only
 ```
 
-**4. EEF-controlled arm with joint encoders**
+**Logged data:** `state_joint_pos`, `target_joint_pos`
+
+### Use Case 4: EEF-Controlled Arm with Joint Encoders
+
 ```python
 CtrlLogger(
     name="right_arm",
     attr={"num_joints": 7},
-    log_eef_pose=True,          # Primary control mode
-    log_joint_positions=True,   # Also log observed joint positions
+    log_eef_pose=True,
+    log_joint_positions=True,   # Log observed joint positions
     target_type="eef_pose",
     joint_units="radians"
 )
-# Log: all fields (EEF pose + joint positions)
 ```
+
+**Logged data:** All EEF pose fields + `state_joint_pos`, `target_joint_pos`
+
+---
+
+## Adapting to Your Robot System
+
+### 1. Replace Simulated Data with Robot API Calls
+
+The example files use simulated data. Replace these sections with your robot's API:
+
+#### Camera Loop ([camera_loop.py:70-81](camera_loop.py))
+```python
+image = camera.capture()  # Replace simulated rainbow frames
+```
+
+#### Robot Control Loop ([robot_control_loop.py:50-53](robot_control_loop.py))
+```python
+state_pos_xyz, state_quat_wxyz = robot.get_eef_pose()
+```
+
+#### Joint Control Loop ([joint_arm_control_loop.py:52-57](joint_arm_control_loop.py))
+```python
+state_joint_pos = robot.get_joint_positions()
+state_pos_xyz, state_quat_wxyz = robot.forward_kinematics(state_joint_pos)
+```
+
+#### Gripper Control Loop ([gripper_control_loop.py:48-52](gripper_control_loop.py))
+```python
+state_joint_pos = gripper.get_width()
+```
+
+### 2. Configure RobotMQ Endpoints
+
+Ensure endpoints in `main_process.py` match the control loop endpoints.
+
+**Default configuration:**
+- Camera loop: `tcp://localhost:55555`
+- Robot loop: `tcp://localhost:55556`
+- Gripper loop: `tcp://localhost:55557`
+
+### 3. Use Valid Logger Names
+
+Logger names must match enums defined in [robologger/utils/classes.py](../robologger/utils/classes.py):
+
+**Camera names:**
+- Pattern: `{position}_{mount}_{index}`
+- Examples: `right_wrist_camera_0`, `head_camera_0`, `left_wrist_camera_1`
+- Must be continuous and zero-indexed
+
+**Robot component names:**
+- Arms: `right_arm`, `left_arm`
+- End effectors: `right_end_effector`, `left_end_effector`
+
+### 4. Configure Success Labeling
+
+Set `success_config` in `MainLogger` to control how episodes are labeled:
+
+| Config | Behavior |
+|--------|----------|
+| `"none"` | No success field (field not included in metadata) |
+| `"input_true"` | Prompt user with `[Y/n]` (defaults to successful) |
+| `"input_false"` | Prompt user with `[y/N]` (defaults to failed) |
+| `"hardcode_true"` | Always mark successful (no prompt) |
+| `"hardcode_false"` | Always mark failed (no prompt) |
+
+---
+
+## Understanding the Example Files
+
+### robot_control_loop.py
+Demonstrates minimal EEF-controlled arm logging (pose only, no joints). Useful for testing Cartesian control without joint trajectory recording.
+
+### joint_arm_control_loop.py
+Demonstrates full arm logging including both EEF pose and joint positions. **Preferred for most use cases** as it captures complete robot state for analysis and replay.
+
+### gripper_control_loop.py
+Demonstrates gripper logging with joint positions only (no EEF pose needed).
+
+### camera_loop.py
+Demonstrates multi-stream video logging with synchronized timestamps.
+
+### main_process.py
+Coordinates all control loops, manages episode lifecycle, and handles user input for recording control and success labeling.
