@@ -14,7 +14,7 @@ class CtrlLogger(BaseLogger):
         # EEF-controlled arm that can observe joints
         logger = CtrlLogger(
             name="right_arm", endpoint="tcp://localhost:5555", attr={"num_joints": 7},
-            log_eef_pose=True, log_joint_positions=True, target_type="eef_pose", joint_units="radians"
+            log_eef_pose=True, log_joint_pos=True, target_type="eef_pose", joint_units="radians"
         )
         logger.log_state(state_timestamp=t, state_pos_xyz=pos, state_quat_wxyz=quat, state_joint_pos=joints)
         logger.log_target(target_timestamp=t, target_pos_xyz=target_pos, target_quat_wxyz=target_quat)
@@ -22,7 +22,7 @@ class CtrlLogger(BaseLogger):
         # Joint-controlled arm that can infer EEF pose (common - log both)
         logger = CtrlLogger(
             name="left_arm", endpoint="tcp://localhost:5557", attr={"num_joints": 7},
-            log_eef_pose=True, log_joint_positions=True, target_type="joint_positions", joint_units="radians"
+            log_eef_pose=True, log_joint_pos=True, target_type="joint_pos", joint_units="radians"
         )
         logger.log_state(state_timestamp=t, state_pos_xyz=pos, state_quat_wxyz=quat, state_joint_pos=joints)
         logger.log_target(target_timestamp=t, target_joint_pos=target_pos)
@@ -30,28 +30,28 @@ class CtrlLogger(BaseLogger):
         # Joint-controlled gripper (meters, cannot infer EEF pose)
         logger = CtrlLogger(
             name="right_end_effector", endpoint="tcp://localhost:5556", attr={"num_joints": 1},
-            log_eef_pose=False, log_joint_positions=True, target_type="joint_positions", joint_units="meters"
+            log_eef_pose=False, log_joint_pos=True, target_type="joint_pos", joint_units="meters"
         )
         logger.log_state(state_timestamp=t, state_joint_pos=joint_pos)
         logger.log_target(target_timestamp=t, target_joint_pos=target_pos)
 
     Configuration:
         log_eef_pose: Log end-effector pose (xyz + quaternion)
-        log_joint_positions: Log joint positions
-        target_type: Control target type ("eef_pose" or "joint_positions")
+        log_joint_pos: Log joint positions
+        target_type: Control target type ("eef_pose" or "joint_pos")
         joint_units: Joint units ("radians", "meters", or None if not logging joints)
 
     Notes:
         - Joint-controlled robots can often infer EEF pose via forward kinematics.
           Set log_eef_pose=True to log both joint positions and inferred EEF pose.
-        - EEF-controlled robots may have joint encoders. Set log_joint_positions=True
+        - EEF-controlled robots may have joint encoders. Set log_joint_pos=True
           to log both EEF pose and observed joint positions.
 
     Constraints:
-        - At least one of log_eef_pose or log_joint_positions must be True
+        - At least one of log_eef_pose or log_joint_pos must be True
         - target_type must match a logged observation type
-        - joint_units required if log_joint_positions=True, None otherwise
-        - attr["num_joints"] required if log_joint_positions=True
+        - joint_units required if log_joint_pos=True, None otherwise
+        - attr["num_joints"] required if log_joint_pos=True
 
     Naming Convention:
         Must use RobotName enum: right_arm, left_arm, head, body, left_end_effector, right_end_effector
@@ -62,8 +62,8 @@ class CtrlLogger(BaseLogger):
         endpoint: str,
         attr: Dict[str, Any],
         log_eef_pose: bool,
-        log_joint_positions: bool,
-        target_type: Literal["eef_pose", "joint_positions"],
+        log_joint_pos: bool,
+        target_type: Literal["eef_pose", "joint_pos"],
         joint_units: Optional[Literal["radians", "meters"]] = None,
     ):
         """Initialize control logger.
@@ -71,40 +71,40 @@ class CtrlLogger(BaseLogger):
         Args:
             name: Logger name (must match RobotName enum)
             endpoint: Endpoint for data
-            attr: Attributes dict (must contain 'num_joints' if log_joint_positions=True)
+            attr: Attributes dict (must contain 'num_joints' if log_joint_pos=True)
             log_eef_pose: Whether to log end-effector pose
-            log_joint_positions: Whether to log joint positions
-            target_type: Type of control target ("eef_pose" or "joint_positions")
+            log_joint_pos: Whether to log joint positions
+            target_type: Type of control target ("eef_pose" or "joint_pos")
             joint_units: Units for joint positions ("radians", "meters", or None)
         """
         self._validate_robot_name(name)
 
-        if not log_eef_pose and not log_joint_positions:
-            raise ValueError("At least one of log_eef_pose or log_joint_positions must be True")
+        if not log_eef_pose and not log_joint_pos:
+            raise ValueError("At least one of log_eef_pose or log_joint_pos must be True")
 
-        if target_type not in ["eef_pose", "joint_positions"]:
-            raise ValueError(f"target_type must be 'eef_pose' or 'joint_positions', got '{target_type}'")
+        if target_type not in ["eef_pose", "joint_pos"]:
+            raise ValueError(f"target_type must be 'eef_pose' or 'joint_pos', got '{target_type}'")
 
         if target_type == "eef_pose" and not log_eef_pose:
             raise ValueError("target_type='eef_pose' requires log_eef_pose=True")
-        if target_type == "joint_positions" and not log_joint_positions:
-            raise ValueError("target_type='joint_positions' requires log_joint_positions=True")
+        if target_type == "joint_pos" and not log_joint_pos:
+            raise ValueError("target_type='joint_pos' requires log_joint_pos=True")
 
-        if log_joint_positions:
+        if log_joint_pos:
             if joint_units not in ["radians", "meters"]:
-                raise ValueError(f"joint_units must be 'radians' or 'meters' when log_joint_positions=True, got {joint_units}")
+                raise ValueError(f"joint_units must be 'radians' or 'meters' when log_joint_pos=True, got {joint_units}")
             if "num_joints" not in attr:
-                raise ValueError("num_joints must be specified in attr when log_joint_positions=True")
+                raise ValueError("num_joints must be specified in attr when log_joint_pos=True")
         else:
             if joint_units is not None:
-                raise ValueError(f"joint_units must be None when log_joint_positions=False, got {joint_units}")
+                raise ValueError(f"joint_units must be None when log_joint_pos=False, got {joint_units}")
 
         # store config
         self.log_eef_pose = log_eef_pose
-        self.log_joint_positions = log_joint_positions
+        self.log_joint_pos = log_joint_pos
         self.target_type = target_type
         self.joint_units = joint_units
-        self.num_joints = attr.get("num_joints") if log_joint_positions else None
+        self.num_joints = attr.get("num_joints") if log_joint_pos else None
 
         super().__init__(name, endpoint, attr)
 
@@ -141,7 +141,7 @@ class CtrlLogger(BaseLogger):
             self.zarr_group.attrs.update({
                 "target_type": self.target_type,
                 "log_eef_pose": self.log_eef_pose,
-                "log_joint_positions": self.log_joint_positions,
+                "log_joint_pos": self.log_joint_pos,
                 "joint_units": self.joint_units,
                 "num_joints": self.num_joints,
             })
@@ -174,6 +174,24 @@ class CtrlLogger(BaseLogger):
                     chunks=(1000, 4),
                     dtype=np.float32,
                 )
+
+            # joint pos datasets
+            if self.log_joint_pos:
+                self.zarr_group.create_dataset(
+                    "state_joint_pos",
+                    shape=(0, self.num_joints),
+                    chunks=(1000, self.num_joints),
+                    dtype=np.float32,
+                )
+
+            if self.target_type == "joint_pos":
+                self.zarr_group.create_dataset(
+                    "target_joint_pos",
+                    shape=(0, self.num_joints),
+                    chunks=(1000, self.num_joints),
+                    dtype=np.float32,
+                )
+            elif self.target_type == "eef_pose":
                 self.zarr_group.create_dataset(
                     "target_pos_xyz",
                     shape=(0, 3),
@@ -186,21 +204,8 @@ class CtrlLogger(BaseLogger):
                     chunks=(1000, 4),
                     dtype=np.float32,
                 )
-
-            # joint pos datasets
-            if self.log_joint_positions:
-                self.zarr_group.create_dataset(
-                    "state_joint_pos",
-                    shape=(0, self.num_joints),
-                    chunks=(1000, self.num_joints),
-                    dtype=np.float32,
-                )
-                self.zarr_group.create_dataset(
-                    "target_joint_pos",
-                    shape=(0, self.num_joints),
-                    chunks=(1000, self.num_joints),
-                    dtype=np.float32,
-                )
+            else:
+                raise ValueError(f"Invalid target_type: {self.target_type}")
 
             self.state_count = 0
             self.target_count = 0
@@ -234,7 +239,7 @@ class CtrlLogger(BaseLogger):
             state_timestamp: Timestamp of the state
             state_pos_xyz: EEF position (required if log_eef_pose=True)
             state_quat_wxyz: EEF orientation as quaternion (required if log_eef_pose=True)
-            state_joint_pos: Joint positions (required if log_joint_positions=True)
+            state_joint_pos: Joint positions (required if log_joint_pos=True)
         """
         if not self._is_recording:
             logger.warning(f"[{self.name}] Not recording, but received state command")
@@ -258,9 +263,9 @@ class CtrlLogger(BaseLogger):
 
                 datasets_to_resize.extend(["state_pos_xyz", "state_quat_wxyz"])
 
-            if self.log_joint_positions:
+            if self.log_joint_pos:
                 if state_joint_pos is None:
-                    raise ValueError("state_joint_pos is required when log_joint_positions=True")
+                    raise ValueError("state_joint_pos is required when log_joint_pos=True")
 
                 if len(state_joint_pos) != self.num_joints:
                     raise ValueError(f"Expected {self.num_joints} joint positions, got {len(state_joint_pos)}")
@@ -282,7 +287,7 @@ class CtrlLogger(BaseLogger):
                 self.zarr_group["state_pos_xyz"][self.state_count] = state_pos_xyz
                 self.zarr_group["state_quat_wxyz"][self.state_count] = state_quat_wxyz
 
-            if self.log_joint_positions:
+            if self.log_joint_pos:
                 self.zarr_group["state_joint_pos"][self.state_count] = state_joint_pos
 
             self.state_count += 1
@@ -309,7 +314,7 @@ class CtrlLogger(BaseLogger):
             target_timestamp: Timestamp of the target
             target_pos_xyz: Target EEF position (required if target_type="eef_pose")
             target_quat_wxyz: Target EEF orientation (required if target_type="eef_pose")
-            target_joint_pos: Target joint positions (required if target_type="joint_positions")
+            target_joint_pos: Target joint positions (required if target_type="joint_pos")
         """
         if not self._is_recording:
             logger.warning(f"[{self.name}] Not recording, but received target command")
@@ -333,9 +338,9 @@ class CtrlLogger(BaseLogger):
 
                 datasets_to_resize.extend(["target_pos_xyz", "target_quat_wxyz"])
 
-            elif self.target_type == "joint_positions":
+            elif self.target_type == "joint_pos":
                 if target_joint_pos is None:
-                    raise ValueError("target_joint_pos is required when target_type='joint_positions'")
+                    raise ValueError("target_joint_pos is required when target_type='joint_pos'")
 
                 if len(target_joint_pos) != self.num_joints:
                     raise ValueError(f"Expected {self.num_joints} joint positions, got {len(target_joint_pos)}")
@@ -357,7 +362,7 @@ class CtrlLogger(BaseLogger):
                 self.zarr_group["target_pos_xyz"][self.target_count] = target_pos_xyz
                 self.zarr_group["target_quat_wxyz"][self.target_count] = target_quat_wxyz
 
-            elif self.target_type == "joint_positions":
+            elif self.target_type == "joint_pos":
                 self.zarr_group["target_joint_pos"][self.target_count] = target_joint_pos
 
             self.target_count += 1
@@ -380,7 +385,7 @@ class CtrlLogger(BaseLogger):
               "last_timestamp": self.last_timestamp,
               "storage_initialized": self.zarr_group is not None,
               "log_eef_pose": self.log_eef_pose,
-              "log_joint_positions": self.log_joint_positions,
+              "log_joint_pos": self.log_joint_pos,
               "target_type": self.target_type,
               "joint_units": self.joint_units,
           }

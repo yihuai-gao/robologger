@@ -15,10 +15,10 @@ project_name/
 │           │   ├── state_quat_wxyz
 │           │   ├── target_pos_xyz
 │           │   ├── target_quat_wxyz
-│           │   # Joint datasets (if log_joint_positions=True):
+│           │   # Joint datasets (if log_joint_pos=True):
 │           │   ├── state_joint_pos
 │           │   ├── target_joint_pos
-│           │   └── .zattrs (robot_name, target_type, ctrl_freq, log_eef_pose, log_joint_positions, joint_units, num_joints)
+│           │   └── .zattrs (robot_name, target_type, ctrl_freq, log_eef_pose, log_joint_pos, joint_units, num_joints)
 │           ├── {camera_system_name}_{idx}.zarr/ # e.g., right_wrist_camera_0.zarr for video logger
 │           │   ├── {actual_camera_name}_timestamps # e.g., main_timestamps, depth_timestamps, ultrawide_timestamps
 │           │   ├── {actual_camera_name}.mp4         # e.g., main.mp4, depth.mp4, ultrawide.mp4

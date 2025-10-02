@@ -27,8 +27,8 @@ def main():
             "num_joints": 1                                # Number of joints (1 for parallel gripper, more for hands)
         },
         log_eef_pose=False,                                # Don't log end-effector pose (gripper has no EEF pose)
-        log_joint_positions=True,                          # Log joint positions (gripper width)
-        target_type="joint_positions",                     # Control target is joint positions
+        log_joint_pos=True,                          # Log joint positions (gripper width)
+        target_type="joint_pos",                     # Control target is joint positions
         joint_units="meters"                               # Joint units (meters for gripper width)
     )
 
@@ -47,7 +47,7 @@ def main():
 
             # Get actual gripper state (replace with real gripper API)
             # e.g., state_joint_pos = gripper.get_width()  # for parallel gripper
-            # e.g., state_joint_pos = hand.get_joint_positions()  # for multi-finger hand
+            # e.g., state_joint_pos = hand.get_joint_pos()  # for multi-finger hand
             state_joint_pos += np.random.uniform(-0.001, 0.001, 1)
             state_joint_pos = np.clip(state_joint_pos, 0.0, 0.1)  # WSG50: 0-100mm range
             state_timestamp = time.monotonic()

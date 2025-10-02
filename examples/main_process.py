@@ -101,48 +101,48 @@ def main():
     # Start keyboard input thread (daemon=True makes it exit when main thread exits)
     threading.Thread(target=keyboard_thread, daemon=True).start()
 
-    try:
-        while continue_running:
-            if terminal_key_name is not None:
-                key = terminal_key_name
-                terminal_key_name = None
+    # try:
+    while continue_running:
+        if terminal_key_name is not None:
+            key = terminal_key_name
+            terminal_key_name = None
 
-                if key in ("\x03", "\x1c", "q"):  # Ctrl+C, Ctrl+\, q
-                    break
-                if key in ("\r", "\n"):  # Ignore Enter key
-                    continue
+            if key in ("\x03", "\x1c", "q"):  # Ctrl+C, Ctrl+\, q
+                break
+            if key in ("\r", "\n"):  # Ignore Enter key
+                continue
 
-                # Print separator and handle command
-                print(f"\n{'─'*60}")
-                if key == "s":
-                    print("Starting recording...")
-                    try:
-                        episode_idx = main_logger.start_recording()
-                        print(f"Recording episode {episode_idx}")
-                    except Exception as e:
-                        print(f"Failed to start recording: {e}")
-                elif key == "e":
-                    print("Stopping recording...")
-                    pause_keyboard = True  # Pause for user input prompt
-                    time.sleep(0.02)  # Let keyboard thread pause
-                    episode_idx = main_logger.stop_recording()
-                    pause_keyboard = False  # Resume keyboard thread
-                    if episode_idx is not None:
-                        print(f"Stopped recording episode {episode_idx}")
-                elif key == "d":
-                    print("Deleting last episode...")
-                    episode_idx = main_logger.delete_last_episode()
-                    if episode_idx is not None:
-                        print(f"Deleted episode {episode_idx}")
-                print(f"{'─'*60}\n")
-            else:
-                time.sleep(0.01)  # Avoid busy-wait
+            # Print separator and handle command
+            print(f"\n{'─'*60}")
+            if key == "s":
+                print("Starting recording...")
+                try:
+                    episode_idx = main_logger.start_recording()
+                    print(f"Recording episode {episode_idx}")
+                except Exception as e:
+                    print(f"Failed to start recording: {e}")
+            elif key == "e":
+                print("Stopping recording...")
+                pause_keyboard = True  # Pause for user input prompt
+                time.sleep(0.02)  # Let keyboard thread pause
+                episode_idx = main_logger.stop_recording()
+                pause_keyboard = False  # Resume keyboard thread
+                if episode_idx is not None:
+                    print(f"Stopped recording episode {episode_idx}")
+            elif key == "d":
+                print("Deleting last episode...")
+                episode_idx = main_logger.delete_last_episode()
+                if episode_idx is not None:
+                    print(f"Deleted episode {episode_idx}")
+            print(f"{'─'*60}\n")
+        else:
+            time.sleep(0.01)  # Avoid busy-wait
 
-    except KeyboardInterrupt:
-        pass
-    finally:
-        continue_running = False
-        print("\nStopped")
+    # except KeyboardInterrupt:
+    #     pass
+    # finally:
+    #     continue_running = False
+    #     print("\nStopped")
 
 
 if __name__ == "__main__":

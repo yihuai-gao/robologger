@@ -2,7 +2,7 @@
 Joint-controlled arm with EEF pose logging
 
 Demonstrates the most common robot control scenario:
-1. Robot is controlled via joint positions (joint_positions target)
+1. Robot is controlled via joint positions (joint_pos target)
 2. Robot can compute EEF pose via forward kinematics
 3. Log BOTH joint positions and inferred EEF pose for downstream use
 
@@ -25,8 +25,8 @@ def main():
             "num_joints": 7                                # Number of joints in the arm
         },
         log_eef_pose=True,                                 # Log EEF pose (from forward kinematics)
-        log_joint_positions=True,                          # Log joint positions (primary control)
-        target_type="joint_positions",                     # Control targets are joint positions
+        log_joint_pos=True,                          # Log joint positions (primary control)
+        target_type="joint_pos",                     # Control targets are joint positions
         joint_units="radians"                              # Joint positions in radians
     )
 
@@ -49,7 +49,7 @@ def main():
             loop_start = time.monotonic()
 
             # Get actual robot state from sensors
-            # In real robot: state_joint_pos = robot.get_joint_positions()
+            # In real robot: state_joint_pos = robot.get_joint_pos()
             state_joint_pos += np.random.uniform(-0.001, 0.001, 7).astype(np.float32)
 
             # Compute EEF pose via forward kinematics

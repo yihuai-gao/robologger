@@ -143,10 +143,10 @@ class MainLogger:
                 logger.warning(f"Logger {logger_name} is not alive")
         return alive_loggers
 
-    def stop_recording(self):
+    def stop_recording(self) -> Optional[int]:
         if not self.is_recording:
             logger.warning("Not recording, ignoring stop command in main logger")
-            return None # TODO: Should we raise an error instead?
+            return None
         self.is_recording = False
         alive_loggers = self.get_alive_loggers()
         for logger_name in alive_loggers:
@@ -241,21 +241,27 @@ class MainLogger:
             Always check for None before using the returned value.
         """
         if self.is_recording:
-            logger.warning("[Dump Last Episode] Cannot delete episode while recording is active")
+            logger.warning("[Delete Last Episode] Cannot delete episode while recording is active")
             return None
 
         if self.last_episode_idx is None:
-            logger.warning("[Dump Last Episode] Try to delete, but there is no tracked completed episode to delete")
-            return None
+            if self._get_next_episode_idx() > 0:
+                self.last_episode_idx = self._get_next_episode_idx() - 1
+                logger.warning(f"[Delete Last Episode] Deleting the largest episode index {self.last_episode_idx}")
+            else:
+                logger.warning("[Delete Last Episode] There is no episode to delete, cannot delete")
+                return None
 
         episode_dir = os.path.join(self.run_dir, f"episode_{self.last_episode_idx:06d}")
 
         if not os.path.exists(episode_dir):
-            logger.warning(f"[Dump Last Episode] Episode {self.last_episode_idx} directory not found at {episode_dir}, cannot delete")
+            logger.warning(f"[Delete Last Episode] Episode {self.last_episode_idx} directory not found at {episode_dir}, cannot delete")
             self.last_episode_idx = None
             return None
 
-        logger.info(f"[Dump Last Episode] Deleting episode {self.last_episode_idx}: {episode_dir}")
+        logger.info(f"[Delete Last Episode] Deleting episode {self.last_episode_idx}: {episode_dir}")
+
+        #TODO: Confirm [Y/n]
         shutil.rmtree(episode_dir)
 
         deleted_idx = self.last_episode_idx

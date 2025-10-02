@@ -9,7 +9,7 @@ logger = CtrlLogger(
         "test_attr": "test_value",
     },
     log_eef_pose=True,
-    log_joint_positions=False,
+    log_joint_pos=False,
     target_type="eef_pose",
     joint_units=None
 )

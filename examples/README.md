@@ -119,8 +119,8 @@ The unified `CtrlLogger` supports flexible control configurations for arms and g
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `log_eef_pose` | bool | Log end-effector pose (position + quaternion) |
-| `log_joint_positions` | bool | Log joint positions |
-| `target_type` | str | Control mode: `"eef_pose"` or `"joint_positions"` |
+| `log_joint_pos` | bool | Log joint positions |
+| `target_type` | str | Control mode: `"eef_pose"` or `"joint_pos"` |
 | `joint_units` | str | Joint units: `"radians"`, `"meters"`, or `None` |
 
 ### Use Case 1: EEF-Controlled Arm (Cartesian Control)
@@ -129,7 +129,7 @@ The unified `CtrlLogger` supports flexible control configurations for arms and g
 CtrlLogger(
     name="right_arm",
     log_eef_pose=True,
-    log_joint_positions=False,
+    log_joint_pos=False,
     target_type="eef_pose",
     joint_units=None
 )
@@ -144,8 +144,8 @@ CtrlLogger(
     name="left_arm",
     attr={"num_joints": 7},
     log_eef_pose=True,          # Computed via forward kinematics
-    log_joint_positions=True,
-    target_type="joint_positions",
+    log_joint_pos=True,
+    target_type="joint_pos",
     joint_units="radians"
 )
 ```
@@ -161,8 +161,8 @@ CtrlLogger(
     name="right_end_effector",
     attr={"num_joints": 1},
     log_eef_pose=False,
-    log_joint_positions=True,
-    target_type="joint_positions",
+    log_joint_pos=True,
+    target_type="joint_pos",
     joint_units="meters"
 )
 ```
@@ -176,7 +176,7 @@ CtrlLogger(
     name="right_arm",
     attr={"num_joints": 7},
     log_eef_pose=True,
-    log_joint_positions=True,   # Log observed joint positions
+    log_joint_pos=True,   # Log observed joint positions
     target_type="eef_pose",
     joint_units="radians"
 )
@@ -204,7 +204,7 @@ state_pos_xyz, state_quat_wxyz = robot.get_eef_pose()
 
 #### Joint Control Loop ([joint_arm_control_loop.py:52-57](joint_arm_control_loop.py))
 ```python
-state_joint_pos = robot.get_joint_positions()
+state_joint_pos = robot.get_joint_pos()
 state_pos_xyz, state_quat_wxyz = robot.forward_kinematics(state_joint_pos)
 ```
 
@@ -265,3 +265,10 @@ Demonstrates multi-stream video logging with synchronized timestamps.
 
 ### main_process.py
 Coordinates all control loops, manages episode lifecycle, and handles user input for recording control and success labeling.
+
+
+# TODO:
+- Rename CtrlLogger -> RobotCtrlLogger
+- Difference between two control mode: target should be either joint or pose, but not both
+- Confirmation before deleting episode
+<!-- - Simplify loguru message -->

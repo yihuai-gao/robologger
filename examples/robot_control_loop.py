@@ -26,7 +26,7 @@ def main():
             "num_joints": 7                                # Number of joints (optional if not logging joints)
         },
         log_eef_pose=True,                                 # Log end-effector pose
-        log_joint_positions=False,                         # Don't log joint positions (Cartesian control only)
+        log_joint_pos=False,                         # Don't log joint positions (Cartesian control only)
         target_type="eef_pose",                            # Control target is EEF pose
         joint_units=None                                   # Not needed since we're not logging joints
     )

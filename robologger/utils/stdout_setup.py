@@ -12,7 +12,8 @@ def setup_logging(level: str = "INFO", format_str: Optional[str] = None, coloriz
         return
     
     if format_str is None:
-        format_str = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+        # format_str = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+        format_str = "<green>{time:HH:mm:ss}</green> - <level>{message}</level>"
     
     logger.remove()  # remove default handler and add custom logger
     logger.add(sys.stdout, format=format_str, colorize=colorize, level=level)
