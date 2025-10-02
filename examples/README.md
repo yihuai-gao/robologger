@@ -73,9 +73,9 @@ Main Process (coordinator)
 |------|-------------|-------------|
 | `main_process.py` | MainLogger | Episode metadata (project, task, run, morphology, success) |
 | `camera_loop.py` | VideoLogger | Video streams (.mp4) with timestamps* |
-| `robot_control_loop.py` | CtrlLogger | EEF pose only (state + target) |
-| `joint_arm_control_loop.py` | CtrlLogger | (Inferred) EEF pose + joint positions (state + target) |
-| `gripper_control_loop.py` | CtrlLogger | Joint positions (state + target) |
+| `robot_control_loop.py` | RobotCtrlLogger | EEF pose only (state + target) |
+| `joint_arm_control_loop.py` | RobotCtrlLogger | (Inferred) EEF pose + joint positions (state + target) |
+| `gripper_control_loop.py` | RobotCtrlLogger | Joint positions (state + target) |
 
 *Number of cameras and streams depends on configuration
 
@@ -110,9 +110,9 @@ data/demo_project/demo_task/run_001/episode_000000/
 
 ---
 
-## CtrlLogger Configuration
+## RobotCtrlLogger Configuration
 
-The unified `CtrlLogger` supports flexible control configurations for arms and grippers.
+The unified `RobotCtrlLogger` supports flexible control configurations for arms and grippers.
 
 ### Configuration Parameters
 
@@ -126,7 +126,7 @@ The unified `CtrlLogger` supports flexible control configurations for arms and g
 ### Use Case 1: EEF-Controlled Arm (Cartesian Control)
 
 ```python
-CtrlLogger(
+RobotCtrlLogger(
     name="right_arm",
     log_eef_pose=True,
     log_joint_pos=False,
@@ -140,7 +140,7 @@ CtrlLogger(
 ### Use Case 2: Joint-Controlled Arm with EEF Pose (RECOMMENDED)
 
 ```python
-CtrlLogger(
+RobotCtrlLogger(
     name="left_arm",
     attr={"num_joints": 7},
     log_eef_pose=True,          # Computed via forward kinematics
@@ -157,7 +157,7 @@ CtrlLogger(
 ### Use Case 3: Joint-Controlled Gripper
 
 ```python
-CtrlLogger(
+RobotCtrlLogger(
     name="right_end_effector",
     attr={"num_joints": 1},
     log_eef_pose=False,
@@ -172,7 +172,7 @@ CtrlLogger(
 ### Use Case 4: EEF-Controlled Arm with Joint Encoders
 
 ```python
-CtrlLogger(
+RobotCtrlLogger(
     name="right_arm",
     attr={"num_joints": 7},
     log_eef_pose=True,
@@ -246,29 +246,3 @@ Set `success_config` in `MainLogger` to control how episodes are labeled:
 | `"input_false"` | Prompt user with `[y/N]` (defaults to failed) |
 | `"hardcode_true"` | Always mark successful (no prompt) |
 | `"hardcode_false"` | Always mark failed (no prompt) |
-
----
-
-## Understanding the Example Files
-
-### robot_control_loop.py
-Demonstrates minimal EEF-controlled arm logging (pose only, no joints). Useful for testing Cartesian control without joint trajectory recording.
-
-### joint_arm_control_loop.py
-Demonstrates full arm logging including both EEF pose and joint positions. **Preferred for most use cases** as it captures complete robot state for analysis and replay.
-
-### gripper_control_loop.py
-Demonstrates gripper logging with joint positions only (no EEF pose needed).
-
-### camera_loop.py
-Demonstrates multi-stream video logging with synchronized timestamps.
-
-### main_process.py
-Coordinates all control loops, manages episode lifecycle, and handles user input for recording control and success labeling.
-
-
-# TODO:
-- Rename CtrlLogger -> RobotCtrlLogger
-- Difference between two control mode: target should be either joint or pose, but not both
-- Confirmation before deleting episode
-<!-- - Simplify loguru message -->

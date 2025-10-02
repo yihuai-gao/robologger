@@ -261,7 +261,21 @@ class MainLogger:
 
         logger.info(f"[Delete Last Episode] Deleting episode {self.last_episode_idx}: {episode_dir}")
 
-        #TODO: Confirm [Y/n]
+        # prompt for confirmation (default: yes)
+        try:
+            while True:
+                response = input(f"Confirming deleting episode {self.last_episode_idx} at {episode_dir}? [Y/n]: ").strip().lower()
+                if response == '' or response in ['y', 'yes']:
+                    break
+                elif response in ['n', 'no']:
+                    logger.info(f"[Delete Last Episode] Deletion of episode {self.last_episode_idx} cancelled by user")
+                    return None
+                else:
+                    print("Please enter 'y' for yes or 'n' for no (default is yes)")
+        except (EOFError, KeyboardInterrupt):
+            logger.info(f"[Delete Last Episode] Deletion of episode {self.last_episode_idx} cancelled by user")
+            return None
+
         shutil.rmtree(episode_dir)
 
         deleted_idx = self.last_episode_idx

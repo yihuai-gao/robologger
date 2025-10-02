@@ -7,12 +7,12 @@ from typing import Dict, Any, Optional, Literal
 from loguru import logger
 
 
-class CtrlLogger(BaseLogger):
+class RobotCtrlLogger(BaseLogger):
     """Logger for robot control data (joint and/or cartesian control).
 
     Usage:
         # EEF-controlled arm that can observe joints
-        logger = CtrlLogger(
+        logger = RobotCtrlLogger(
             name="right_arm", endpoint="tcp://localhost:5555", attr={"num_joints": 7},
             log_eef_pose=True, log_joint_pos=True, target_type="eef_pose", joint_units="radians"
         )
@@ -20,7 +20,7 @@ class CtrlLogger(BaseLogger):
         logger.log_target(target_timestamp=t, target_pos_xyz=target_pos, target_quat_wxyz=target_quat)
 
         # Joint-controlled arm that can infer EEF pose (common - log both)
-        logger = CtrlLogger(
+        logger = RobotCtrlLogger(
             name="left_arm", endpoint="tcp://localhost:5557", attr={"num_joints": 7},
             log_eef_pose=True, log_joint_pos=True, target_type="joint_pos", joint_units="radians"
         )
@@ -28,7 +28,7 @@ class CtrlLogger(BaseLogger):
         logger.log_target(target_timestamp=t, target_joint_pos=target_pos)
 
         # Joint-controlled gripper (meters, cannot infer EEF pose)
-        logger = CtrlLogger(
+        logger = RobotCtrlLogger(
             name="right_end_effector", endpoint="tcp://localhost:5556", attr={"num_joints": 1},
             log_eef_pose=False, log_joint_pos=True, target_type="joint_pos", joint_units="meters"
         )
@@ -79,6 +79,7 @@ class CtrlLogger(BaseLogger):
         """
         self._validate_robot_name(name)
 
+        # validate config
         if not log_eef_pose and not log_joint_pos:
             raise ValueError("At least one of log_eef_pose or log_joint_pos must be True")
 
@@ -118,7 +119,7 @@ class CtrlLogger(BaseLogger):
         valid_names = [robot.value for robot in RobotName]
         if name not in valid_names:
             raise ValueError(
-                f"CtrlLogger name '{name}' must match RobotName enum.\n"
+                f"RobotCtrlLogger name '{name}' must match RobotName enum.\n"
                 f"Valid names: {valid_names}"
             )
 

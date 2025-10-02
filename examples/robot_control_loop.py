@@ -1,8 +1,8 @@
 """
 Robot arm control loop with robologger
 
-Demonstrates how to integrate CtrlLogger into a robot control loop:
-1. Initialize CtrlLogger with robot name and control configuration
+Demonstrates how to integrate RobotCtrlLogger into a robot control loop:
+1. Initialize RobotCtrlLogger with robot name and control configuration
 2. Run control loop at desired frequency
 3. Check recording state with update_recording_state()
 4. Log both state (actual pose) and target (commanded pose) each iteration
@@ -12,11 +12,11 @@ The logger stores pose data (position + quaternion) and timestamps in zarr forma
 """
 import time
 import numpy as np
-from robologger.loggers.ctrl_logger import CtrlLogger
+from robologger.loggers.ctrl_logger import RobotCtrlLogger
 
 def main():
-    # Initialize CtrlLogger for Cartesian-controlled arm
-    logger = CtrlLogger(
+    # Initialize RobotCtrlLogger for Cartesian-controlled arm
+    logger = RobotCtrlLogger(
         name="right_arm",                                  # Must match RobotName enum (see utils/classes.py)
                                                            # Options: right_arm, left_arm, head, body...
         endpoint="tcp://localhost:55556",                  # RMQ endpoint for main process

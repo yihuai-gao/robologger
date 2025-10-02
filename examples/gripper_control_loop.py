@@ -1,8 +1,8 @@
 """
 Gripper control loop with robologger
 
-Demonstrates how to integrate CtrlLogger into a gripper control loop:
-1. Initialize CtrlLogger with end effector name and number of joints
+Demonstrates how to integrate RobotCtrlLogger into a gripper control loop:
+1. Initialize RobotCtrlLogger with end effector name and number of joints
 2. Run control loop at desired frequency
 3. Check recording state with update_recording_state()
 4. Log both state (actual joint positions) and target (commanded positions)
@@ -13,11 +13,11 @@ Works for any joint-based end effector (grippers, dex hands, etc.).
 """
 import time
 import numpy as np
-from robologger.loggers.ctrl_logger import CtrlLogger
+from robologger.loggers.ctrl_logger import RobotCtrlLogger
 
 def main():
-    # Initialize CtrlLogger for joint-controlled gripper
-    logger = CtrlLogger(
+    # Initialize RobotCtrlLogger for joint-controlled gripper
+    logger = RobotCtrlLogger(
         name="right_end_effector",                         # Must match RobotName enum (see utils/classes.py)
                                                            # Options: right_end_effector, left_end_effector
         endpoint="tcp://localhost:55557",                  # RMQ endpoint for main process

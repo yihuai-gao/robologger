@@ -1,8 +1,8 @@
 import time
-from robologger.loggers.ctrl_logger import CtrlLogger
+from robologger.loggers.ctrl_logger import RobotCtrlLogger
 import numpy as np
 
-logger = CtrlLogger(
+logger = RobotCtrlLogger(
     name="right_arm",  # Must use valid RobotName enum
     endpoint="tcp://localhost:55556",
     attr={

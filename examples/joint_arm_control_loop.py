@@ -12,11 +12,11 @@ Demonstrates the most common robot control scenario:
 """
 import time
 import numpy as np
-from robologger.loggers.ctrl_logger import CtrlLogger
+from robologger.loggers.ctrl_logger import RobotCtrlLogger
 
 def main():
-    # Initialize CtrlLogger for joint-controlled arm with EEF pose logging
-    logger = CtrlLogger(
+    # Initialize RobotCtrlLogger for joint-controlled arm with EEF pose logging
+    logger = RobotCtrlLogger(
         name="right_arm",                                  # Must match RobotName enum
         endpoint="tcp://localhost:55556",                  # RMQ endpoint for main process (same as robot_control_loop.py)
         attr={
