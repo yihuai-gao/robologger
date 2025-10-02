@@ -29,7 +29,8 @@ class VideoLogger(BaseLogger):
         name: str,
         endpoint: str,
         attr: Dict[str, Any],
-        depth_range: tuple[float, float] = (0.0, 4.0), # TODO: change
+        codec: str = "h264_nvenc", # XXX: can use av1_nvenc if supported
+        depth_range: tuple[float, float] = (0.0, 4.0), # TODO: choose a proper range
     ):
         """Initialize video logger with camera configurations."""
         super().__init__(name, endpoint, attr)
@@ -38,6 +39,7 @@ class VideoLogger(BaseLogger):
         self._validate_camera_config(attr)
         self.depth_range = depth_range
         self.hue_opts = EncoderOpts(use_lut=True)
+        self.codec = codec
 
 
     def _validate_camera_config(self, attr: Dict[str, Any]) -> None:
@@ -100,7 +102,7 @@ class VideoLogger(BaseLogger):
                       "-i",
                       "-",
                       "-c:v",
-                      "h264_nvenc",
+                      self.codec,
                       "-pix_fmt",
                       "yuv420p",
                       "-preset",
@@ -112,8 +114,8 @@ class VideoLogger(BaseLogger):
                 self.ffmpeg_processes[cam_name] = subprocess.Popen(
                     ffmpeg_cmd,
                     stdin=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,  # Remove to see ffmpeg encoding output
-                    stdout=subprocess.DEVNULL   # Remove to see ffmpeg encoding output
+                    # stderr=subprocess.DEVNULL,  # XXX: Remove to see ffmpeg encoding output
+                    stdout=subprocess.DEVNULL   # XXX: Remove to see ffmpeg encoding output
                 )
                 logger.info(f"[{self.name}] Initialized ffmpeg process for camera: {cam_name}")
         except Exception as e:
