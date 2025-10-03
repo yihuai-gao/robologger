@@ -27,8 +27,8 @@ def main():
             "num_joints": 1                                # Number of joints (1 for parallel gripper, more for hands)
         },
         log_eef_pose=False,                                # Don't log end-effector pose (gripper has no EEF pose)
-        log_joint_pos=True,                          # Log joint positions (gripper width)
-        target_type="joint_pos",                     # Control target is joint positions
+        log_joint_pos=True,                                # Log joint positions (gripper width)
+        target_type="joint_pos",                           # Control target is joint positions
         joint_units="meters"                               # Joint units (meters for gripper width)
     )
 
