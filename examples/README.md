@@ -95,11 +95,11 @@ data/demo_project/demo_task/run_001/episode_000000/
 ├── right_arm.zarr/
 │   ├── state_pos_xyz/
 │   ├── state_quat_wxyz/
-│   ├── target_pos_xyz/
-│   ├── target_quat_wxyz/
 │   ├── state_joint_pos/
-│   ├── target_joint_pos/
 │   ├── state_timestamps/
+│   ├── target_pos_xyz/ (if target_type=="eef_pose")
+│   ├── target_quat_wxyz/ (if target_type=="eef_pose")
+│   ├── target_joint_pos/ (if target_type=="joint_pos")
 │   └── target_timestamps/
 └── right_end_effector.zarr/
     ├── state_joint_pos/

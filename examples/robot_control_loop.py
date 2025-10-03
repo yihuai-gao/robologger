@@ -12,7 +12,7 @@ The logger stores pose data (position + quaternion) and timestamps in zarr forma
 """
 import time
 import numpy as np
-from robologger.loggers.ctrl_logger import RobotCtrlLogger
+from robologger.loggers.robot_ctrl_logger import RobotCtrlLogger
 
 def main():
     # Initialize RobotCtrlLogger for Cartesian-controlled arm

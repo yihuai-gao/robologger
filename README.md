@@ -8,16 +8,14 @@ project_name/
 │           ├── metadata.zarr/
 │           │   └── .zattrs (project_name, task_name, run_name, morphology, is_demonstration, is_successful)
 │           ├── {robot_name}.zarr/ # e.g., right_arm.zarr - unified control logger
-│           │   ├── state_timestamps
-│           │   ├── target_timestamps
-│           │   # EEF pose datasets (if log_eef_pose=True):
-│           │   ├── state_pos_xyz
-│           │   ├── state_quat_wxyz
-│           │   ├── target_pos_xyz
-│           │   ├── target_quat_wxyz
-│           │   # Joint datasets (if log_joint_pos=True):
-│           │   ├── state_joint_pos
-│           │   ├── target_joint_pos
+│           │   ├── state_pos_xyz/
+│           │   ├── state_quat_wxyz/
+│           │   ├── state_joint_pos/
+│           │   ├── state_timestamps/
+│           │   ├── target_pos_xyz/ (if target_type=="eef_pose")
+│           │   ├── target_quat_wxyz/ (if target_type=="eef_pose")
+│           │   ├── target_joint_pos/ (if target_type=="joint_pos")
+│           │   ├── target_timestamps/
 │           │   └── .zattrs (robot_name, target_type, ctrl_freq, log_eef_pose, log_joint_pos, joint_units, num_joints)
 │           ├── {camera_system_name}_{idx}.zarr/ # e.g., right_wrist_camera_0.zarr for video logger
 │           │   ├── {actual_camera_name}_timestamps # e.g., main_timestamps, depth_timestamps, ultrawide_timestamps

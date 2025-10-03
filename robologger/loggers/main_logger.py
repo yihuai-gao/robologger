@@ -152,7 +152,7 @@ class MainLogger:
         for logger_name in alive_loggers:
             self.clients[logger_name].put_data(topic="command", data=serialize({"type": "stop"}))
         episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}")
-        logger.info(f"Stopped recording for {len(alive_loggers)} loggers. Data has been saved to {episode_dir}")
+        logger.info(f"Episode {self.episode_idx} stopped recording for {len(alive_loggers)} loggers. Data has been saved to {episode_dir}")
         is_successful = self._get_is_successful()
         self._store_metadata(is_successful)
         self.last_episode_idx = self.episode_idx  # Track COMPLETED episode
@@ -186,7 +186,8 @@ class MainLogger:
         elif self.success_config == "none":
             # if success_config was None, don't set is_successful
             is_successful = None
-            logger.info("[MainLogger] Success mode is none, not setting is_successful. To set episode success manually, use set_successful(bool) method.")
+            # logger.info("[MainLogger] Success mode is none, not setting is_successful. To set episode success manually, use set_successful(bool) method.")
+            logger.info(f"[MainLogger] Episode {self.episode_idx} success unset.")
         else:
             raise ValueError(f"Invalid success_config: {self.success_config}")
 
