@@ -48,6 +48,8 @@ Use keyboard commands in the main process terminal:
 
 RoboLogger uses a distributed design where control loops run independently and the main process coordinates recording:
 
+![Distributed Logging System](distributed_logging_system.png)
+
 ```
 Main Process (coordinator; main entry point)
     |
