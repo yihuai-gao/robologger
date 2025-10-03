@@ -1,6 +1,6 @@
 import os
 import subprocess
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 import cv2
 import numpy as np
@@ -30,7 +30,7 @@ class VideoLogger(BaseLogger):
         endpoint: str,
         attr: Dict[str, Any],
         codec: str = "h264_nvenc", # XXX: can use av1_nvenc if supported
-        depth_range: tuple[float, float] = (0.0, 4.0), # TODO: choose a proper range
+        depth_range: Tuple[float, float] = (0.0, 4.0), # TODO: choose a proper range
     ):
         """Initialize video logger with camera configurations."""
         super().__init__(name, endpoint, attr)
@@ -114,7 +114,7 @@ class VideoLogger(BaseLogger):
                 self.ffmpeg_processes[cam_name] = subprocess.Popen(
                     ffmpeg_cmd,
                     stdin=subprocess.PIPE,
-                    # stderr=subprocess.DEVNULL,  # XXX: Remove to see ffmpeg encoding output
+                    stderr=subprocess.DEVNULL,  # XXX: Remove to see ffmpeg encoding output
                     stdout=subprocess.DEVNULL   # XXX: Remove to see ffmpeg encoding output
                 )
                 logger.info(f"[{self.name}] Initialized ffmpeg process for camera: {cam_name}")

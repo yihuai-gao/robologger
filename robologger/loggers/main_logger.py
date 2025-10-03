@@ -196,10 +196,10 @@ class MainLogger:
     def _prompt_for_success(self):
         """Prompt user for episode success status."""
         if self.success_config.endswith("true"):
-            prompt = "Was this episode successful? [Y/n]: "
+            prompt = "Was this episode successful? (input might not show) [Y/n]: "
             default_response = "Y"
         else:
-            prompt = "Was this episode successful? [y/N]: "
+            prompt = "Was this episode successful? (input might not show) [y/N]: "
             default_response = "N"
         
         while True:
@@ -223,11 +223,6 @@ class MainLogger:
                 # handle Ctrl+C or EOF gracefully
                 logger.info("\nEpisode success status cancelled")
                 return None
-
-    # def set_successful(self, is_successful: bool):
-    #     """Manually set the success status for the current episode."""
-    #     self.is_successful = is_successful
-    #     logger.info(f"Episode {self.episode_idx} success status manually set to: {is_successful}")
 
     def _is_video_logger(self, name: str) -> bool:
         """Check if logger name matches CameraName enum pattern (indicates video logger)."""
@@ -265,7 +260,7 @@ class MainLogger:
         # prompt for confirmation (default: yes)
         try:
             while True:
-                response = input(f"Confirming deleting episode {self.last_episode_idx} at {episode_dir}? [Y/n]: ").strip().lower()
+                response = input(f"Confirming deleting episode {self.last_episode_idx} at {episode_dir}? (input might not show) [Y/n]: ").strip().lower()
                 if response == '' or response in ['y', 'yes']:
                     break
                 elif response in ['n', 'no']:

@@ -24,7 +24,7 @@
 
 import math
 from contextlib import contextmanager
-from typing import Optional
+from typing import Optional, Tuple
 
 # import matplotlib.pyplot as plt
 import numpy as np
@@ -100,7 +100,7 @@ class EncoderOpts:
         qtype: np.dtype = np.uint8,
         ftype: np.dtype = np.float32,
         err_depth: float = np.nan,
-        err_rgb: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        err_rgb: Tuple[float, float, float] = (0.0, 0.0, 0.0),
         min_v: float = 0.4,
         min_s: float = 0.4,
         use_lut: bool = True,
@@ -276,7 +276,7 @@ def _create_dec_lut(opts: EncoderOpts = None):
 
 def depth2rgb(
     d: np.ndarray,
-    zrange: tuple[float, float],
+    zrange: Tuple[float, float],
     *,
     output: np.ndarray = None,
     sanitized: bool = False,
@@ -319,7 +319,7 @@ def depth2rgb(
 
 def rgb2depth(
     rgb: np.ndarray,
-    zrange: tuple[float, float],
+    zrange: Tuple[float, float],
     *,
     output: np.ndarray = None,
     inv_depth: bool = False,
@@ -436,13 +436,13 @@ def rgb2depth(
 # if __name__ == "__main__":
 #     main()
 
-def depth2logrgb(depth: np.ndarray, zrange: tuple[float, float], opts: Optional[EncoderOpts] = None) -> npt.NDArray[np.uint8]:
+def depth2logrgb(depth: np.ndarray, zrange: Tuple[float, float], opts: Optional[EncoderOpts] = None) -> npt.NDArray[np.uint8]:
     opts = opts or _default_opts
     depth_clipped = np.clip(depth, zrange[0], zrange[1])
     depth_logged = np.log(1 + depth_clipped) / np.log(1 + zrange[1])
     return depth2rgb(depth_logged, zrange, opts=opts)
 
-def logrgb2depth(rgb: np.ndarray, zrange: tuple[float, float], opts: Optional[EncoderOpts] = None) -> npt.NDArray[np.float32]:
+def logrgb2depth(rgb: np.ndarray, zrange: Tuple[float, float], opts: Optional[EncoderOpts] = None) -> npt.NDArray[np.float32]:
     opts = opts or _default_opts
     depth_logged = rgb2depth(rgb, zrange, opts=opts)
     depth = np.exp(depth_logged * np.log(1 + zrange[1])) - 1

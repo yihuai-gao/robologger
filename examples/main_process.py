@@ -23,12 +23,13 @@ import termios
 import tty
 import threading
 import time
+from typing import Optional
 
 from robologger.loggers.main_logger import MainLogger
 from robologger.utils.classes import Morphology
 
 # Global state for keyboard input
-terminal_key_name: str | None = None
+terminal_key_name: Optional[str] = None
 continue_running: bool = True
 pause_keyboard: bool = False
 

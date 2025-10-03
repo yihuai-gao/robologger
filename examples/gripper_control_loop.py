@@ -13,7 +13,7 @@ Works for any joint-based end effector (grippers, dex hands, etc.).
 """
 import time
 import numpy as np
-from robologger.loggers.ctrl_logger import RobotCtrlLogger
+from robologger.loggers.robot_ctrl_logger import RobotCtrlLogger
 
 def main():
     # Initialize RobotCtrlLogger for joint-controlled gripper
