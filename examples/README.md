@@ -6,6 +6,12 @@ Examples showing how to integrate RoboLogger into a robot system.
 
 ## Quick Start
 
+### Step 0: Install robologger
+
+```bash
+pip install robologger
+```
+
 ### Step 1: Start Control Loops
 
 Open 3+ terminals and start the control loops. Choose the robot control example that matches your setup:
