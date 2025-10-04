@@ -25,4 +25,4 @@ include = ["robologger*"]
 
 
 [project.urls]
-Homepage = "https://github.com/yihuai-gao/robolog"
+Homepage = "https://github.com/yihuai-gao/robologger"
