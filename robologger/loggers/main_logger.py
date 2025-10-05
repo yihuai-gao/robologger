@@ -228,6 +228,36 @@ class MainLogger:
         """Check if logger name matches CameraName enum pattern (indicates video logger)."""
         pattern = re.compile(r'^(' + '|'.join(re.escape(cam.value) for cam in CameraName) + r')(\d+)$')
         return pattern.match(name) is not None
+    
+    def delete_episode(self, episode_idx: int) -> bool:
+        """Delete a specific episode by index.
+
+        Args:
+            episode_idx: Episode index to delete
+
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        if episode_idx < 0:
+            logger.warning(f"[Delete Episode] Invalid episode index: {episode_idx}")
+            return False
+
+        if self.is_recording:
+            logger.warning("[Delete Episode] Cannot delete episode while recording is active")
+            return False
+        episode_dir = os.path.join(self.run_dir, f"episode_{episode_idx:06d}")
+        if not os.path.exists(episode_dir):
+            logger.warning(f"[Delete Episode] Episode {episode_idx} directory not found at {episode_dir}, cannot delete")
+            return False
+        logger.info(f"[Delete Episode] Deleting episode {episode_idx}: {episode_dir}")
+        try:
+            shutil.rmtree(episode_dir)
+            if self.last_episode_idx == episode_idx:
+                self.last_episode_idx = None  # clear if it was the last completed episode
+            return True
+        except Exception as e:
+            logger.error(f"[Delete Episode] Error deleting episode {episode_idx}: {e}")
+            return False
 
     def delete_last_episode(self) -> Optional[int]:
         """Delete the most recently completed episode.
