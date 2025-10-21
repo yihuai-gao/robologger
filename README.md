@@ -1,3 +1,11 @@
+# TODO
+- Remove opencv dependency (manually write a function to convert between bgr and rgb)
+- Enable logging joint velocity and torque in robot control logger
+- Add logger to log sensor data (IMU)
+- Log language instructions / commands in main logger. Should also include timestamps for each command.
+- Depth recording: consider lossless compression?
+
+
 # Storage data format
 
 ```

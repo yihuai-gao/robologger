@@ -196,7 +196,7 @@ class VideoLogger(BaseLogger):
             frame_rgb = depth2logrgb(frame, self.depth_range, opts=self.hue_opts)
             frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
             # cv2.imshow("frame_bgr", frame_bgr)
-            cv2.waitKey(1)
+            # cv2.waitKey(1)
 
         else:
             raise ValueError(f"Unknown camera type: {config['type']}")
