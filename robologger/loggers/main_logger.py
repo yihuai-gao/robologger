@@ -143,7 +143,7 @@ class MainLogger:
                 logger.warning(f"Logger {logger_name} is not alive")
         return alive_loggers
 
-    def stop_recording(self) -> Optional[int]:
+    def stop_recording(self, is_successful: Optional[bool] = None) -> Optional[int]:
         if not self.is_recording:
             logger.warning("Not recording, ignoring stop command in main logger")
             return None
@@ -153,7 +153,8 @@ class MainLogger:
             self.clients[logger_name].put_data(topic="command", data=serialize({"type": "stop"}))
         episode_dir = os.path.join(self.run_dir, f"episode_{self.episode_idx:06d}")
         logger.info(f"Episode {self.episode_idx} stopped recording for {len(alive_loggers)} loggers. Data has been saved to {episode_dir}")
-        is_successful = self._get_is_successful()
+        if is_successful is None:
+            is_successful = self._get_is_successful()
         self._store_metadata(is_successful)
         self.last_episode_idx = self.episode_idx  # Track COMPLETED episode
         return self.episode_idx
