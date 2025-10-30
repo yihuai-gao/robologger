@@ -26,3 +26,6 @@ include = ["robologger*"]
 
 [project.urls]
 Homepage = "https://github.com/yihuai-gao/robologger"
+
+[project.scripts]
+aggregate_data = "robologger.scripts.aggregate_data:main"

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 Usage:
-    python aggregate_data.py --run_dir /path/to/run/directory
-    python aggregate_data.py --run_dir /path/to/run/directory --output_name aggregated_data
-    python aggregate_data.py --run_dir /path/to/run/directory --output_name aggregated_data --max_workers 12 (default: 4)
+    python aggregate_data.py /path/to/run/directory
+    python aggregate_data.py /path/to/run/directory --output_name aggregated_data
+    python aggregate_data.py /path/to/run/directory --output_name aggregated_data --max_workers 12 (default: 4)
 """
 
 import os
@@ -19,6 +19,7 @@ import zarr
 
 from robologger.utils.classes import CameraName
 from robologger.utils.stdout_setup import setup_logging
+import click
 
 
 class MetadataReader:
@@ -130,7 +131,7 @@ class VideoProcessor(BaseProcessor):
         self.camera_detector = CameraDetector()
     
     def process_episode(self, episode_dir: str, episode_name: str,
-                       success_status: str, output_dir: str) -> None:
+                       success_status: str, output_dir: str, aggregate_camera_name: Optional[str] = None) -> None:
         """Process video files from an episode."""
         status_dir = os.path.join(output_dir, success_status)
         os.makedirs(status_dir, exist_ok=True)
@@ -138,18 +139,28 @@ class VideoProcessor(BaseProcessor):
         video_zarrs = self.camera_detector.find_video_logger_zarrs(episode_dir)
         
         for zarr_path in video_zarrs:
-            video_files = self.camera_detector.get_video_files_from_zarr(zarr_path)
+            if aggregate_camera_name is not None:
                 
-            for camera_system_name, camera_name, video_file_path in video_files:
-                # {episode_name}_{camera_system_name}_{camera_name}.mp4
-                output_filename = f"{episode_name}_{camera_system_name}_{camera_name}.mp4"
-                output_path = os.path.join(status_dir, output_filename)
-                
-                try:
-                    shutil.copy2(video_file_path, output_path)
-                    logger.info(f"Copied {video_file_path} -> {output_path}")
-                except Exception as e:
-                    logger.error(f"Failed to copy {video_file_path}: {e}")
+                if f"{aggregate_camera_name}.mp4" in os.listdir(zarr_path):
+                    output_filename = f"{episode_name}_{aggregate_camera_name}.mp4"
+                    output_path = os.path.join(status_dir, output_filename)
+                    shutil.copy2(os.path.join(zarr_path, f"{aggregate_camera_name}.mp4"), output_path)
+                    logger.info(f"Copied {os.path.join(zarr_path, f'{aggregate_camera_name}.mp4')} -> {output_path}")
+                else:
+                    logger.warning(f"Video file not found: {os.path.join(zarr_path, f'{aggregate_camera_name}.mp4')}; Skipping.")
+            else:
+                video_files = self.camera_detector.get_video_files_from_zarr(zarr_path)
+                    
+                for camera_system_name, camera_name, video_file_path in video_files:
+                    # {episode_name}_{camera_system_name}_{camera_name}.mp4
+                    output_filename = f"{episode_name}_{camera_system_name}_{camera_name}.mp4"
+                    output_path = os.path.join(status_dir, output_filename)
+                    
+                    try:
+                        shutil.copy2(video_file_path, output_path)
+                        logger.info(f"Copied {video_file_path} -> {output_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to copy {video_file_path}: {e}")
 
 
 class DataAggregator:
@@ -164,7 +175,7 @@ class DataAggregator:
             'video': VideoProcessor()
         }
     
-    def aggregate(self, max_workers: int = 4) -> None:
+    def aggregate(self, max_workers: int = 4, camera_name: Optional[str] = None) -> None:
         """Aggregate data from all episodes in the run."""
         logger.info(f"Starting data aggregation for run: {self.run_dir} with {max_workers} workers")
         
@@ -196,7 +207,8 @@ class DataAggregator:
                     str(episode_dir), 
                     episode_name, 
                     success_status, 
-                    str(output_dir)
+                    str(output_dir),
+                    camera_name
                 )
                 futures[future] = episode_name
             
@@ -235,7 +247,7 @@ class DataAggregator:
         return status
     
     def _process_episode(self, episode_dir: str, episode_name: str,
-                        success_status: str, output_dir: str) -> None:
+                        success_status: str, output_dir: str, camera_name: Optional[str] = None) -> None:
         """Process a single episode with all available processors."""
         # setup logging for multiprocessing worker
         setup_logging()
@@ -244,23 +256,21 @@ class DataAggregator:
         
         for processor_name, processor in self.processors.items():
             try:
-                processor.process_episode(episode_dir, episode_name, success_status, output_dir)
+                processor.process_episode(episode_dir, episode_name, success_status, output_dir, aggregate_camera_name=camera_name)
             except Exception as e:
                 logger.error(f"Processor {processor_name} failed for {episode_name}: {e}. Skipping.")
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Aggregate robologger episode data")
-    parser.add_argument("--run_dir", required=True, help="Path to run directory")
-    parser.add_argument("--output_name", default="videos", help="Output folder name")
-    parser.add_argument("--max_workers", type=int, default=min(4, mp.cpu_count()), help="Max parallel workers")
-    
-    args = parser.parse_args()
-    
+@click.command()
+@click.argument("run_dir", required=True)
+@click.option("--camera_name", default=None, help="Name of the video to aggregate")
+@click.option("--output_name", default="videos", help="Output folder name")
+@click.option("--max_workers", type=int, default=min(4, mp.cpu_count()), help="Max parallel workers")
+def main(run_dir, camera_name, output_name, max_workers):
     setup_logging()
     
     # validate run directory
-    run_dir = Path(args.run_dir)
+    run_dir = Path(run_dir)
     if not run_dir.exists():
         logger.error(f"Validation failed: {run_dir} does not exist")
         raise ValueError(f"Run directory does not exist: {run_dir}")
@@ -269,9 +279,9 @@ def main():
         logger.error(f"Validation failed: {run_dir} is not a directory")
         raise ValueError(f"Run path is not a directory: {run_dir}")
     
-    aggregator = DataAggregator(str(run_dir), args.output_name)
-    logger.info(f"Running with {args.max_workers} workers")
-    aggregator.aggregate(max_workers=args.max_workers)
+    aggregator = DataAggregator(str(run_dir), output_name)
+    logger.info(f"Running with {max_workers} workers")
+    aggregator.aggregate(max_workers=max_workers, camera_name=camera_name)
 
 
 if __name__ == "__main__":
