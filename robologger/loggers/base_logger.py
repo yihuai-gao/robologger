@@ -81,6 +81,7 @@ class BaseLogger(ABC):
         """Stop recording session and close storage."""
         self._is_recording = False
         logger.info(f"Stopping recording: {self.episode_dir}")
+        self.episode_dir = None
         self._close_storage()
 
     def _set_attributes(self):

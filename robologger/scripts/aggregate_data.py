@@ -131,9 +131,13 @@ class VideoProcessor(BaseProcessor):
         self.camera_detector = CameraDetector()
     
     def process_episode(self, episode_dir: str, episode_name: str,
-                       success_status: str, output_dir: str, aggregate_camera_name: Optional[str] = None) -> None:
+                       success_status: str | None, output_dir: str, aggregate_camera_name: Optional[str] = None) -> None:
         """Process video files from an episode."""
-        status_dir = os.path.join(output_dir, success_status)
+        if success_status is not None:
+            status_dir = os.path.join(output_dir, success_status)
+        else:
+            status_dir = output_dir
+
         os.makedirs(status_dir, exist_ok=True)
         
         video_zarrs = self.camera_detector.find_video_logger_zarrs(episode_dir)
@@ -175,7 +179,7 @@ class DataAggregator:
             'video': VideoProcessor()
         }
     
-    def aggregate(self, max_workers: int = 4, camera_name: Optional[str] = None) -> None:
+    def aggregate(self, max_workers: int = 4, camera_name: Optional[str] = None, separate_successful_episodes: bool = False) -> None:
         """Aggregate data from all episodes in the run."""
         logger.info(f"Starting data aggregation for run: {self.run_dir} with {max_workers} workers")
         
@@ -199,7 +203,10 @@ class DataAggregator:
                 episode_name = episode_dir.name
                 
                 # determine success status
-                success_status = self._get_episode_success_status(episode_dir)
+                if separate_successful_episodes:
+                    success_status = self._get_episode_success_status(episode_dir)
+                else:
+                    success_status = None
                 
                 # submit processing task
                 future = executor.submit(
@@ -247,7 +254,7 @@ class DataAggregator:
         return status
     
     def _process_episode(self, episode_dir: str, episode_name: str,
-                        success_status: str, output_dir: str, camera_name: Optional[str] = None) -> None:
+                        success_status: str | None, output_dir: str, camera_name: Optional[str] = None) -> None:
         """Process a single episode with all available processors."""
         # setup logging for multiprocessing worker
         setup_logging()
@@ -266,7 +273,8 @@ class DataAggregator:
 @click.option("--camera_name", default=None, help="Name of the video to aggregate")
 @click.option("--output_name", default="videos", help="Output folder name")
 @click.option("--max_workers", type=int, default=min(4, mp.cpu_count()), help="Max parallel workers")
-def main(run_dir, camera_name, output_name, max_workers):
+@click.option("--separate_successful_episodes", is_flag=True, help="Separate successful episodes into a separate folder")
+def main(run_dir, camera_name, output_name, max_workers, separate_successful_episodes):
     setup_logging()
     
     # validate run directory
@@ -281,7 +289,7 @@ def main(run_dir, camera_name, output_name, max_workers):
     
     aggregator = DataAggregator(str(run_dir), output_name)
     logger.info(f"Running with {max_workers} workers")
-    aggregator.aggregate(max_workers=max_workers, camera_name=camera_name)
+    aggregator.aggregate(max_workers=max_workers, camera_name=camera_name, separate_successful_episodes=separate_successful_episodes)
 
 
 if __name__ == "__main__":
