@@ -63,8 +63,23 @@ class BaseLogger(ABC):
                 if not self._is_recording:
                     logger.error("Not recording, but received stop command")
                 self.stop_recording()
+            elif command["type"] == "pause":
+                if not self._is_recording:
+                    logger.error("Not recording, but received pause command")
+                    return self._is_recording
+                logger.info("Pausing recording")
+                self._is_recording = False
+            elif command["type"] == "resume":
+                if self._is_recording:
+                    logger.error("Already recording, but received resume command")
+                    return self._is_recording
+                if self.episode_dir is None or not os.path.exists(self.episode_dir):
+                    logger.error("No episode directory set or directory doesn't exist, cannot resume recording")
+                    return self._is_recording
+                logger.info("Resuming recording")
+                self._is_recording = True
             else:
-                raise ValueError(f"Unknown command type: {command['type']}, must be 'start' or 'end'")
+                raise ValueError(f"Unknown command type received in update_recording_state() method: {command['type']}, must be 'start', 'stop', 'pause', or 'resume'")
             
         return self._is_recording
 
