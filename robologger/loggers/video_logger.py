@@ -2,13 +2,13 @@ import os
 import subprocess
 from typing import Dict, Any, Tuple
 
-import cv2
 import numpy as np
 import numpy.typing as npt
 import zarr
 from loguru import logger
 
 from robologger.utils.huecodec import depth2logrgb, EncoderOpts
+from robologger.utils.color_convert import rgb_to_bgr
 from robologger.loggers.base_logger import BaseLogger
 
 class VideoLogger(BaseLogger):
@@ -180,8 +180,8 @@ class VideoLogger(BaseLogger):
             if frame.shape != expected_shape:
                 raise ValueError(f"RGB frame shape mismatch for camera '{camera_name}'. "
                                 f"Expected {expected_shape}, got {frame.shape}")
-            
-            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+            frame_bgr = rgb_to_bgr(frame)
 
         elif config["type"] == "depth":
             expected_shape = (config["height"], config["width"])
@@ -192,11 +192,9 @@ class VideoLogger(BaseLogger):
             if frame.shape != expected_shape:
                 raise ValueError(f"Depth frame shape mismatch for camera '{camera_name}'. "
                                 f"Expected {expected_shape}, got {frame.shape}")
-            
+
             frame_rgb = depth2logrgb(frame, self.depth_range, opts=self.hue_opts)
-            frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-            # cv2.imshow("frame_bgr", frame_bgr)
-            # cv2.waitKey(1)
+            frame_bgr = rgb_to_bgr(frame_rgb)
 
         else:
             raise ValueError(f"Unknown camera type: {config['type']}")

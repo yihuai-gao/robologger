@@ -15,8 +15,7 @@ dependencies = [
     "numpy",
     "zarr>=2.16.0,<3.0.0",
     "loguru",
-    "robotmq",
-    "opencv-python"
+    "robotmq"
 ]
 
 [tool.setuptools.packages.find]
