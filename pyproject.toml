@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 requires-python = ">=3.8"
 name = "robologger"
-version = "0.1.3"
+version = "0.1.4"
 description = ""
 authors = [
     { name = "Yihuai Gao", email = "yihuai@stanford.edu" },
