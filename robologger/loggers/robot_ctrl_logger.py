@@ -152,13 +152,13 @@ class RobotCtrlLogger(BaseLogger):
                 "state_timestamps",
                 shape=(0,),
                 chunks=(1000,),
-                dtype=np.float32,
+                dtype=np.float64,
             )
             self.zarr_group.create_dataset(
                 "target_timestamps",
                 shape=(0,),
                 chunks=(1000,),
-                dtype=np.float32,
+                dtype=np.float64,
             )
 
             # eef datasets
@@ -167,13 +167,13 @@ class RobotCtrlLogger(BaseLogger):
                     "state_pos_xyz",
                     shape=(0, 3),
                     chunks=(1000, 3),
-                    dtype=np.float32,
+                    dtype=np.float64,
                 )
                 self.zarr_group.create_dataset(
                     "state_quat_wxyz",
                     shape=(0, 4),
                     chunks=(1000, 4),
-                    dtype=np.float32,
+                    dtype=np.float64,
                 )
 
             # joint pos datasets
@@ -182,7 +182,7 @@ class RobotCtrlLogger(BaseLogger):
                     "state_joint_pos",
                     shape=(0, self.num_joints),
                     chunks=(1000, self.num_joints),
-                    dtype=np.float32,
+                    dtype=np.float64,
                 )
 
             if self.target_type == "joint_pos":
@@ -190,20 +190,20 @@ class RobotCtrlLogger(BaseLogger):
                     "target_joint_pos",
                     shape=(0, self.num_joints),
                     chunks=(1000, self.num_joints),
-                    dtype=np.float32,
+                    dtype=np.float64,
                 )
             elif self.target_type == "eef_pose":
                 self.zarr_group.create_dataset(
                     "target_pos_xyz",
                     shape=(0, 3),
                     chunks=(1000, 3),
-                    dtype=np.float32,
+                    dtype=np.float64,
                 )
                 self.zarr_group.create_dataset(
                     "target_quat_wxyz",
                     shape=(0, 4),
                     chunks=(1000, 4),
-                    dtype=np.float32,
+                    dtype=np.float64,
                 )
             else:
                 raise ValueError(f"Invalid target_type: {self.target_type}")
@@ -230,9 +230,9 @@ class RobotCtrlLogger(BaseLogger):
         self,
         *,
         state_timestamp: float,
-        state_pos_xyz: Optional[npt.NDArray[np.float32]] = None,
-        state_quat_wxyz: Optional[npt.NDArray[np.float32]] = None,
-        state_joint_pos: Optional[npt.NDArray[np.float32]] = None,
+        state_pos_xyz: Optional[npt.NDArray[np.float64]] = None,
+        state_quat_wxyz: Optional[npt.NDArray[np.float64]] = None,
+        state_joint_pos: Optional[npt.NDArray[np.float64]] = None,
     ):
         """Log robot state (current pose and/or joint positions).
 
@@ -305,9 +305,9 @@ class RobotCtrlLogger(BaseLogger):
         self,
         *,
         target_timestamp: float,
-        target_pos_xyz: Optional[npt.NDArray[np.float32]] = None,
-        target_quat_wxyz: Optional[npt.NDArray[np.float32]] = None,
-        target_joint_pos: Optional[npt.NDArray[np.float32]] = None,
+        target_pos_xyz: Optional[npt.NDArray[np.float64]] = None,
+        target_quat_wxyz: Optional[npt.NDArray[np.float64]] = None,
+        target_joint_pos: Optional[npt.NDArray[np.float64]] = None,
     ):
         """Log robot target (desired pose and/or joint positions).
 

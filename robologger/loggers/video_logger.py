@@ -79,7 +79,7 @@ class VideoLogger(BaseLogger):
                 f"{cam_name}_timestamps",
                 shape=(0,),
                 chunks=(1000,),
-                dtype=np.float32,
+                dtype=np.float64,
             )
             logger.info(f"[{self.name}] Created timestamp array for camera: {cam_name}")
         

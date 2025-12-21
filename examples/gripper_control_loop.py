@@ -63,12 +63,12 @@ def main():
                 # Log actual state (measured from gripper sensors)
                 logger.log_state(
                     state_timestamp=state_timestamp,           # When state was measured
-                    state_joint_pos=state_joint_pos.astype(np.float32)  # Actual joint positions (N,) float32
+                    state_joint_pos=state_joint_pos.astype(np.float64)  # Actual joint positions (N,) float64
                 )
                 # Log commanded target (from controller)
                 logger.log_target(
                     target_timestamp=target_timestamp,         # When target was commanded
-                    target_joint_pos=target_joint_pos.astype(np.float32)  # Target joint positions (N,) float32
+                    target_joint_pos=target_joint_pos.astype(np.float64)  # Target joint positions (N,) float64
                 )
 
             elapsed = time.monotonic() - loop_start
