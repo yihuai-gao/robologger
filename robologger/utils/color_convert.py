@@ -20,7 +20,7 @@ def rgb_to_bgr(frame: npt.NDArray[Any]) -> npt.NDArray[Any]:
         raise ValueError(f"Expected 3-channel image (H, W, 3), got shape {frame.shape}")
 
     # Reverse the channel order: RGB -> BGR or BGR -> RGB
-    return frame[..., ::-1].copy()
+    return frame[..., ::-1]
 
 
 def bgr_to_rgb(frame: npt.NDArray[Any]) -> npt.NDArray[Any]:
@@ -40,4 +40,4 @@ def bgr_to_rgb(frame: npt.NDArray[Any]) -> npt.NDArray[Any]:
         raise ValueError(f"Expected 3-channel image (H, W, 3), got shape {frame.shape}")
 
     # Reverse the channel order: BGR -> RGB or RGB -> BGR
-    return frame[..., ::-1].copy()
+    return frame[..., ::-1]

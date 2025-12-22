@@ -153,12 +153,14 @@ class RobotCtrlLogger(BaseLogger):
                 shape=(0,),
                 chunks=(1000,),
                 dtype=np.float64,
+                compressor=None,
             )
             self.zarr_group.create_dataset(
                 "target_timestamps",
                 shape=(0,),
                 chunks=(1000,),
                 dtype=np.float64,
+                compressor=None,
             )
 
             # eef datasets
@@ -168,12 +170,14 @@ class RobotCtrlLogger(BaseLogger):
                     shape=(0, 3),
                     chunks=(1000, 3),
                     dtype=np.float64,
+                    compressor=None,
                 )
                 self.zarr_group.create_dataset(
                     "state_quat_wxyz",
                     shape=(0, 4),
                     chunks=(1000, 4),
                     dtype=np.float64,
+                    compressor=None,
                 )
 
             # joint pos datasets
@@ -183,6 +187,7 @@ class RobotCtrlLogger(BaseLogger):
                     shape=(0, self.num_joints),
                     chunks=(1000, self.num_joints),
                     dtype=np.float64,
+                    compressor=None,
                 )
 
             if self.target_type == "joint_pos":
@@ -191,6 +196,7 @@ class RobotCtrlLogger(BaseLogger):
                     shape=(0, self.num_joints),
                     chunks=(1000, self.num_joints),
                     dtype=np.float64,
+                    compressor=None,
                 )
             elif self.target_type == "eef_pose":
                 self.zarr_group.create_dataset(
@@ -198,12 +204,14 @@ class RobotCtrlLogger(BaseLogger):
                     shape=(0, 3),
                     chunks=(1000, 3),
                     dtype=np.float64,
+                    compressor=None,
                 )
                 self.zarr_group.create_dataset(
                     "target_quat_wxyz",
                     shape=(0, 4),
                     chunks=(1000, 4),
                     dtype=np.float64,
+                    compressor=None,
                 )
             else:
                 raise ValueError(f"Invalid target_type: {self.target_type}")
@@ -225,7 +233,8 @@ class RobotCtrlLogger(BaseLogger):
             self.zarr_group = None
         else:
             logger.warning(f"[{self.name}] Attempted to close storage but zarr_group is None")
-
+    
+    @profile
     def log_state(
         self,
         *,
@@ -300,7 +309,8 @@ class RobotCtrlLogger(BaseLogger):
         except Exception as e:
             logger.error(f"[{self.name}] Failed to log state: {e}")
             raise
-
+    
+    @profile
     def log_target(
         self,
         *,

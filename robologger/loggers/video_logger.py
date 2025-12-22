@@ -80,6 +80,7 @@ class VideoLogger(BaseLogger):
                 shape=(0,),
                 chunks=(1000,),
                 dtype=np.float64,
+                compressor=None,
             )
             logger.info(f"[{self.name}] Created timestamp array for camera: {cam_name}")
         
@@ -94,7 +95,7 @@ class VideoLogger(BaseLogger):
                       "-vcodec",
                       "rawvideo",
                       "-pix_fmt",
-                      "bgr24",
+                      "rgb24",
                       "-s",
                       f"{config['width']}x{config['height']}",
                       "-r",
@@ -150,6 +151,7 @@ class VideoLogger(BaseLogger):
         self.ffmpeg_processes.clear()
         self.zarr_group = None
 
+    @profile
     def log_frame(
         self,
         *,
@@ -181,7 +183,8 @@ class VideoLogger(BaseLogger):
                 raise ValueError(f"RGB frame shape mismatch for camera '{camera_name}'. "
                                 f"Expected {expected_shape}, got {frame.shape}")
 
-            frame_bgr = rgb_to_bgr(frame)
+            # frame_bgr = rgb_to_bgr(frame)
+            frame_rgb = frame
 
         elif config["type"] == "depth":
             expected_shape = (config["height"], config["width"])
@@ -194,7 +197,7 @@ class VideoLogger(BaseLogger):
                                 f"Expected {expected_shape}, got {frame.shape}")
 
             frame_rgb = depth2logrgb(frame, self.depth_range, opts=self.hue_opts)
-            frame_bgr = rgb_to_bgr(frame_rgb)
+            # frame_bgr = rgb_to_bgr(frame_rgb)
 
         else:
             raise ValueError(f"Unknown camera type: {config['type']}")
@@ -210,7 +213,7 @@ class VideoLogger(BaseLogger):
             process = self.ffmpeg_processes[camera_name]
             if process.stdin:
                 try:
-                    process.stdin.write(frame_bgr.tobytes())
+                    process.stdin.write(frame_rgb.tobytes()) #frame_bgr
                     process.stdin.flush()
                 except BrokenPipeError:
                     self._close_ffmpeg_process(camera_name, process, timeout=5)
