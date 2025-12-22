@@ -133,22 +133,22 @@ class BaseLogger(ABC):
             This method catches all exceptions and returns False to allow graceful
             cleanup in stop_recording(). No exceptions are raised.
         """
-        if self.zarr_group is None:
-            logger.warning(f"[{self.name}] stop_recording() - Cannot dump data: zarr_group is None")
-            return False
-
-        if not self.data_lists:
-            logger.debug(f"[{self.name}] stop_recording() - No data_lists to dump")
-            return True 
-
         try:
+            if self.zarr_group is None:
+                logger.warning(f"[{self.name}] Cannot dump data: zarr_group is None")
+                return False
+
+            if not self.data_lists:
+                logger.debug(f"[{self.name}] No data_lists to dump")
+                return True
+
             logger.info(f"[{self.name}] Starting data dump to zarr...")
             num_fields_written = 0
             total_samples = 0
 
             for datafield_name, data_list in self.data_lists.items():
                 if not data_list:
-                    logger.warning(f"[{self.name}] stop_recording() - Data field has no data: {datafield_name}")
+                    logger.warning(f"[{self.name}] Data field has no data: {datafield_name}")
                     continue
 
                 try:
@@ -177,19 +177,21 @@ class BaseLogger(ABC):
                     logger.debug(f"[{self.name}] Dumped {datafield_name}: {len(data_list)} samples, shape={shape}")
 
                 except Exception as datafield_error:  # pylint: disable=broad-except
-                    logger.error(f"[{self.name}] stop_recording() - Failed to dump data field {datafield_name}: {datafield_error}")
+                    logger.error(f"[{self.name}] Failed to dump data field {datafield_name}: {datafield_error}")
                     continue
 
             if num_fields_written > 0:
                 logger.info(f"[{self.name}] Data dump complete: {num_fields_written} data fields, {total_samples} total samples")
                 return True
             else:
-                logger.error(f"[{self.name}] stop_recording() - Data dump failed: no data fields were successfully written")
+                logger.error(f"[{self.name}] Data dump failed: no data fields were successfully written")
                 return False
 
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"[{self.name}] stop_recording() - Error during data dump: {e}")
-            return False  
+            logger.error(f"[{self.name}] Error during data dump: {e}")
+            return False
+        finally:
+            self.data_lists = {}
 
     @abstractmethod
     def _init_storage(self):

@@ -331,7 +331,7 @@ class RobotCtrlLogger(BaseLogger):
             if self.state_count % 1000 == 0:
                 logger.debug(f"[{self.name}] Buffered {self.state_count} states in memory")
 
-            # now using in-memory buffering instead od zarr writes
+            # now using in-memory buffering instead of zarr writes
             # datasets_to_resize = ["state_timestamps"]
             #
             # if self.log_eef_pose:
@@ -430,7 +430,6 @@ class RobotCtrlLogger(BaseLogger):
             if self.target_count % 1000 == 0:
                 logger.debug(f"[{self.name}] Buffered {self.target_count} targets in memory")
 
-            # # OLD ZARR APPROACH (commented out - now using in-memory buffering)
             # datasets_to_resize = ["target_timestamps"]
             #
             # if self.target_type == "eef_pose":
