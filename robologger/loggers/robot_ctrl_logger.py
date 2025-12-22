@@ -4,6 +4,7 @@ import numpy.typing as npt
 import zarr
 import os
 from typing import Dict, Any, Optional, Literal
+from robologger.classes import RobotName
 from loguru import logger
 
 
@@ -125,7 +126,6 @@ class RobotCtrlLogger(BaseLogger):
 
     def _validate_robot_name(self, name: str) -> None:
         """Validate logger name matches RobotName enum pattern."""
-        from robologger.utils.classes import RobotName
 
         valid_names = [robot.value for robot in RobotName]
         if name not in valid_names:
@@ -258,7 +258,7 @@ class RobotCtrlLogger(BaseLogger):
         else:
             logger.warning(f"[{self.name}] Attempted to close storage but zarr_group is None")
     
-    @profile
+    # @profile
     def log_state(
         self,
         *,
@@ -323,7 +323,7 @@ class RobotCtrlLogger(BaseLogger):
                     self.data_lists["state_joint_torque"].append(state_joint_torque.copy())
 
             # Append to in-memory lists 
-            self.data_lists["state_timestamps"].append(state_timestamp.copy())
+            self.data_lists["state_timestamps"].append(state_timestamp)
 
             self.state_count += 1
             self.last_timestamp = state_timestamp
@@ -362,7 +362,7 @@ class RobotCtrlLogger(BaseLogger):
             logger.error(f"[{self.name}] Failed to log state: {e}")
             raise
     
-    @profile
+    # @profile
     def log_target(
         self,
         *,

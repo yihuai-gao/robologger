@@ -51,6 +51,6 @@ class GenericLogger(BaseLogger):
             if data_array.shape != data_shape:
                 raise ValueError(f"Input data shape {data_array.shape} does not match expected shape {data_shape}")
 
-            self.data_lists[data_name].append(data_array)
+            self.data_lists[data_name].append(data_array.copy())
 
         self.data_lists["timestamps"].append(timestamp)
