@@ -3,7 +3,7 @@ import re
 from typing import Dict, List, Optional, Union
 from loguru import logger
 from robotmq import RMQClient, deserialize, serialize
-from robologger.utils.classes import Morphology, CameraName
+from robologger.classes import Morphology, CameraName
 from robologger.utils.stdout_setup import setup_logging
 from atexit import register
 import shutil

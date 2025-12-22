@@ -26,7 +26,7 @@ import time
 from typing import Optional
 
 from robologger.loggers.main_logger import MainLogger
-from robologger.utils.classes import Morphology
+from robologger.classes import Morphology
 
 # Global state for keyboard input
 terminal_key_name: Optional[str] = None

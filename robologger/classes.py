@@ -49,16 +49,19 @@ class RobotName(Enum):
     LEFT_END_EFFECTOR = "left_end_effector"
     RIGHT_END_EFFECTOR = "right_end_effector"
 
-class EndEffectorSetup(Enum):
-    """
-    End effector setups.
-    - ARX+Finray
-    - WSG50+Finray
-    - Robotiq 
-    """
-    ARX_FINRAY = "arx_finray"
-    WSG50_FINRAY = "wsg50_finray"
-    ROBOTIQ = "robotiq"
+    
+    
+
+# class EndEffectorSetup(Enum):
+#     """
+#     End effector setups.
+#     - ARX+Finray
+#     - WSG50+Finray
+#     - Robotiq 
+#     """
+#     ARX_FINRAY = "arx_finray"
+#     WSG50_FINRAY = "wsg50_finray"
+#     ROBOTIQ = "robotiq"
 
 if __name__ == "__main__":
     # test the enum names

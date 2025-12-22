@@ -1,6 +1,6 @@
 import os
 import subprocess
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Literal, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -8,7 +8,6 @@ import zarr
 from loguru import logger
 
 from robologger.utils.huecodec import depth2logrgb, EncoderOpts
-from robologger.utils.color_convert import rgb_to_bgr
 from robologger.loggers.base_logger import BaseLogger
 
 class VideoLogger(BaseLogger):
@@ -32,7 +31,10 @@ class VideoLogger(BaseLogger):
         codec: str = "h264_nvenc", # XXX: can use av1_nvenc if supported
         depth_range: Tuple[float, float] = (0.0, 4.0), # TODO: choose a proper range
     ):
-        """Initialize video logger with camera configurations."""
+        """
+        Initialize video logger with camera configurations.
+        color_order: should match the color order of your direct camera readout. This will speed up the log_frame() method by avoiding channel reordering. The stored data will remain 
+        """
         super().__init__(name, endpoint, attr)
         self.ffmpeg_processes: Dict[str, subprocess.Popen[bytes]] = {}
 
@@ -75,14 +77,15 @@ class VideoLogger(BaseLogger):
         # timestamp arrays for each camera
         # NOTE: camera_config is stored in attr as a (nested) dict
         for cam_name in self.attr["camera_configs"].keys():
-            self.zarr_group.create_dataset(
-                f"{cam_name}_timestamps",
-                shape=(0,),
-                chunks=(1000,),
-                dtype=np.float64,
-                compressor=None,
-            )
-            logger.info(f"[{self.name}] Created timestamp array for camera: {cam_name}")
+            # self.zarr_group.create_dataset(
+            #     f"{cam_name}_timestamps",
+            #     shape=(0,),
+            #     chunks=(1000,),
+            #     dtype=np.float64,
+            #     compressor=None,
+            # )
+            # logger.info(f"[{self.name}] Created timestamp array for camera: {cam_name}")
+            self.data_lists[f"{cam_name}_timestamps"] = []
         
         try:
             for cam_name, config in self.attr["camera_configs"].items():
@@ -151,13 +154,13 @@ class VideoLogger(BaseLogger):
         self.ffmpeg_processes.clear()
         self.zarr_group = None
 
-    @profile
+    # @profile
     def log_frame(
         self,
         *,
         camera_name: str,
         timestamp: float,
-        frame: npt.NDArray[Any],  # RGB uint8 or depth float32
+        frame: npt.NDArray[Any],  # {color_order}24 uint8 or depth float32
     ):
         """Log single video frame with timestamp."""
         if not self._is_recording:
@@ -183,7 +186,6 @@ class VideoLogger(BaseLogger):
                 raise ValueError(f"RGB frame shape mismatch for camera '{camera_name}'. "
                                 f"Expected {expected_shape}, got {frame.shape}")
 
-            # frame_bgr = rgb_to_bgr(frame)
             frame_rgb = frame
 
         elif config["type"] == "depth":
@@ -197,17 +199,17 @@ class VideoLogger(BaseLogger):
                                 f"Expected {expected_shape}, got {frame.shape}")
 
             frame_rgb = depth2logrgb(frame, self.depth_range, opts=self.hue_opts)
-            # frame_bgr = rgb_to_bgr(frame_rgb)
 
         else:
             raise ValueError(f"Unknown camera type: {config['type']}")
 
-        timestamp_dataset = self.zarr_group[f"{camera_name}_timestamps"]
-        assert isinstance(timestamp_dataset, zarr.Array), "Timestamp dataset must be a zarr.Array"
-        original_shape = timestamp_dataset.shape
-        new_shape = (original_shape[0] + 1, *original_shape[1:])
-        timestamp_dataset.resize(new_shape)
-        timestamp_dataset[-1] = timestamp
+        # timestamp_dataset = self.zarr_group[f"{camera_name}_timestamps"]
+        # assert isinstance(timestamp_dataset, zarr.Array), "Timestamp dataset must be a zarr.Array"
+        # original_shape = timestamp_dataset.shape
+        # new_shape = (original_shape[0] + 1, *original_shape[1:])
+        # timestamp_dataset.resize(new_shape)
+        # timestamp_dataset[-1] = timestamp
+        self.data_lists[f"{camera_name}_timestamps"].append(timestamp)
 
         if camera_name in self.ffmpeg_processes:
             process = self.ffmpeg_processes[camera_name]

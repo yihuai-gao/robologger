@@ -17,7 +17,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from loguru import logger
 import zarr
 
-from robologger.utils.classes import CameraName
+from robologger.classes import CameraName
 from robologger.utils.stdout_setup import setup_logging
 import click
 
