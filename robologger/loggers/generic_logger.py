@@ -54,3 +54,13 @@ class GenericLogger(BaseLogger):
             self.data_lists[data_name].append(data_array.copy())
 
         self.data_lists["timestamps"].append(timestamp)
+
+    
+    def _close_storage(self):
+        """Close zarr storage"""
+        if self.zarr_group is not None:
+            logger.info(f"[{self.name}] Closing zarr storage. Recorded {self.state_count} states and {self.target_count} targets")
+            self.zarr_group = None
+        else:
+            logger.warning(f"[{self.name}] Attempted to close storage but zarr_group is None")
+    

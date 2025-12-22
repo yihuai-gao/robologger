@@ -15,7 +15,8 @@ dependencies = [
     "numpy",
     "zarr>=2.16.0,<3.0.0",
     "loguru",
-    "robotmq"
+    "robotmq",
+    "robot-utils",
 ]
 
 [tool.setuptools.packages.find]
