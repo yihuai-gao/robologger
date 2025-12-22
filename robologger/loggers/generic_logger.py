@@ -17,6 +17,7 @@ class GenericLogger(BaseLogger):
     ):
         super().__init__(name, endpoint, attr)
         self.data_shapes = data_shapes
+        self.data_count = 0
 
     def _init_storage(self):
 
@@ -33,6 +34,8 @@ class GenericLogger(BaseLogger):
         self.zarr_group = zarr.open_group(zarr_path, mode="w")
 
         self.zarr_group.attrs.update(self.attr)
+
+        self.data_count = 0
         
     def log_data(self, *, timestamp: float, data_dict: Dict[str, npt.NDArray[np.float64]]):
         if not self._is_recording:
@@ -54,12 +57,13 @@ class GenericLogger(BaseLogger):
             self.data_lists[data_name].append(data_array.copy())
 
         self.data_lists["timestamps"].append(timestamp)
+        self.data_count += 1
 
     
     def _close_storage(self):
         """Close zarr storage"""
         if self.zarr_group is not None:
-            logger.info(f"[{self.name}] Closing zarr storage. Recorded {self.state_count} states and {self.target_count} targets")
+            logger.info(f"[{self.name}] Closing zarr storage. Recorded {self.data_count} data points")
             self.zarr_group = None
         else:
             logger.warning(f"[{self.name}] Attempted to close storage but zarr_group is None")
