@@ -4,7 +4,7 @@
 import sys
 import argparse
 from pathlib import Path
-from real_env.visualization.rerun_visualizer import UMIVisualizer
+from robologger.scripts.rerun_visualization.rerun_visualizer import UMIVisualizer
 
 
 def visualize_episode(episode_path: str, max_frames: int = 500, video_rate: int = 3):

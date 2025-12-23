@@ -15,7 +15,7 @@ import numpy as np
 import cv2
 import rerun as rr
 
-from real_env.visualization.base_visualizer import BaseVisualizer
+from robologger.scripts.rerun_visualization.base_visualizer import BaseVisualizer
 
 
 class UMIVisualizer(BaseVisualizer):
