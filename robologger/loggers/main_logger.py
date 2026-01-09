@@ -1,5 +1,6 @@
 import os
 import re
+import signal
 import sys
 from typing import Dict, List, Optional, Union
 from loguru import logger
@@ -72,6 +73,11 @@ class MainLogger:
         assert success_config.lower() in success_config_options, f"Invalid success_config: {success_config}. Must be one of: {success_config_options}"
         self.success_config = success_config.lower()
 
+        # Set up signal handlers for interrupt detection
+        signal.signal(signal.SIGINT, self._handle_interrupt)   # Ctrl+C
+        signal.signal(signal.SIGTERM, self._handle_interrupt)  # kill command
+        signal.signal(signal.SIGQUIT, self._handle_interrupt)  # Ctrl+\
+
         register(self.on_exit)
 
 
@@ -89,12 +95,29 @@ class MainLogger:
         self.zarr_group.attrs["is_demonstration"] = self.is_demonstration
         self.zarr_group.attrs["is_successful"] = is_successful
 
-    def on_exit(self):
-        # Check if exiting due to KeyboardInterrupt
-        if sys.exc_info()[0] is KeyboardInterrupt:
-            self._interrupted = True
-        if self.is_recording:
+    def _handle_interrupt(self, _signum, _frame):
+        """Handle interrupts (Ctrl+C, Ctrl+\\, kill): mark as interrupted and stop recording."""
+        if not self.is_recording:
+            # If not recording, allow normal interrupt behavior
+            raise KeyboardInterrupt
+
+        logger.warning("\n[MainLogger] Interrupt detected. Stopping recording and marking episode as failed.")
+        self._interrupted = True
+        try:
             self.stop_recording()
+        except Exception as e:
+            logger.error(f"[MainLogger] Error during interrupt handling: {e}")
+        finally:
+            sys.exit(1)
+
+    def on_exit(self):
+        """Cleanup handler called on program exit."""
+        if self.is_recording:
+            logger.warning("[MainLogger] Exiting with active recording - stopping recording.")
+            try:
+                self.stop_recording()
+            except Exception as e:
+                logger.error(f"[MainLogger] Error during exit cleanup: {e}")
 
     def validate_logger_endpoints(self):
         for logger_name, client in self.clients.items():
@@ -113,6 +136,7 @@ class MainLogger:
 
         self.validate_logger_endpoints()
         self.is_recording = True
+        self._interrupted = False  # Reset interrupt flag for new episode
 
         if episode_idx is not None:
             self.episode_idx = episode_idx
