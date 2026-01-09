@@ -1,5 +1,7 @@
 import os
 import re
+import signal
+import sys
 from typing import Dict, List, Optional, Union
 from loguru import logger
 from robotmq import RMQClient, deserialize, serialize
@@ -70,6 +72,12 @@ class MainLogger:
         assert success_config.lower() in success_config_options, f"Invalid success_config: {success_config}. Must be one of: {success_config_options}"
         self.success_config = success_config.lower()
 
+        # track interrupt state for signal handling during recording
+        self.interrupted: bool = False
+        signal.signal(signal.SIGINT, self._handle_interrupt)   # Ctrl+C
+        signal.signal(signal.SIGTERM, self._handle_interrupt)  # kill command
+        signal.signal(signal.SIGQUIT, self._handle_interrupt)  # Ctrl+\
+
         register(self.on_exit)
 
 
@@ -86,6 +94,20 @@ class MainLogger:
         self.zarr_group.attrs["morphology"] = self.morphology.value
         self.zarr_group.attrs["is_demonstration"] = self.is_demonstration
         self.zarr_group.attrs["is_successful"] = is_successful
+
+    def _handle_interrupt(self, signum, frame):
+        """Handle interrupts (Ctrl+C, Ctrl+\\, kill): save metadata and exit if recording."""
+        if not self.is_recording:
+            raise KeyboardInterrupt
+
+        logger.warning("\n[MainLogger] Interrupt detected. Stopping recording and marking episode as failed.")
+        self.interrupted = True
+        try:
+            self.stop_recording()
+        except Exception as e:
+            logger.error(f"Error during interrupt handling: {e}")
+        finally:
+            sys.exit(1)
 
     def on_exit(self):
         if self.is_recording:
@@ -178,6 +200,11 @@ class MainLogger:
 
     def _get_is_successful(self) -> Union[None, bool]:
         """Handle success setting based on configured mode."""
+        if self.interrupted:
+            self.interrupted = False
+            logger.info(f"[MainLogger] Episode {self.episode_idx} marked as failed due to interruption.")
+            return False
+
         if self.success_config.startswith("hardcode"):
             is_successful = self.success_config == "hardcode_true"
             logger.info(f"[MainLogger] Episode {self.episode_idx} marked as {'successful' if is_successful else 'failed'} (hardcoded).")
@@ -185,9 +212,7 @@ class MainLogger:
             is_successful = self._prompt_for_success()
             logger.info(f"[MainLogger] Episode {self.episode_idx} marked as {'successful' if is_successful else 'failed'} (user input).")
         elif self.success_config == "none":
-            # if success_config was None, don't set is_successful
             is_successful = None
-            # logger.info("[MainLogger] Success mode is none, not setting is_successful. To set episode success manually, use set_successful(bool) method.")
             logger.info(f"[MainLogger] Episode {self.episode_idx} success unset.")
         else:
             raise ValueError(f"Invalid success_config: {self.success_config}")
@@ -197,20 +222,21 @@ class MainLogger:
     def _prompt_for_success(self):
         """Prompt user for episode success status."""
         if self.success_config.endswith("true"):
-            prompt = "Was this episode successful? (input might not show) [Y/n]: "
+            prompt = "Was this episode successful? [Y/n]: "
             default_response = "Y"
         else:
-            prompt = "Was this episode successful? (input might not show) [y/N]: "
+            prompt = "Was this episode successful? [y/N]: "
             default_response = "N"
-        
+
         while True:
             try:
-                user_input = input(prompt).strip()
-                
+                print(prompt, end='', flush=True)
+                user_input = sys.stdin.readline().strip()
+
                 # handle empty input (use default)
                 if not user_input:
                     user_input = default_response
-                
+
                 # process response
                 if user_input.lower() in ['y', 'yes']:
                     logger.info("Episode marked as successful")
@@ -219,9 +245,8 @@ class MainLogger:
                     logger.info("Episode marked as failed")
                     return False
                 else:
-                    logger.info("Please enter 'y' for yes or 'n' for no.")
+                    print("Please enter 'y' for yes or 'n' for no.")
             except (EOFError, KeyboardInterrupt):
-                # handle Ctrl+C or EOF gracefully
                 logger.info("\nEpisode success status cancelled")
                 return None
 
