@@ -1,6 +1,5 @@
 import os
 import re
-import signal
 import sys
 from typing import Dict, List, Optional, Union
 from loguru import logger
@@ -66,17 +65,12 @@ class MainLogger:
         self.episode_idx: int = -1
         self.last_episode_idx: Optional[int] = None  # track last COMPLETED episode
         self.is_recording: bool = False
+        self._interrupted: bool = False  # track if KeyboardInterrupt occurred
 
         # init success tracking
         success_config_options = ["none", "input_true", "input_false", "hardcode_true", "hardcode_false"]
         assert success_config.lower() in success_config_options, f"Invalid success_config: {success_config}. Must be one of: {success_config_options}"
         self.success_config = success_config.lower()
-
-        # track interrupt state for signal handling during recording
-        self.interrupted: bool = False
-        signal.signal(signal.SIGINT, self._handle_interrupt)   # Ctrl+C
-        signal.signal(signal.SIGTERM, self._handle_interrupt)  # kill command
-        signal.signal(signal.SIGQUIT, self._handle_interrupt)  # Ctrl+\
 
         register(self.on_exit)
 
@@ -95,21 +89,10 @@ class MainLogger:
         self.zarr_group.attrs["is_demonstration"] = self.is_demonstration
         self.zarr_group.attrs["is_successful"] = is_successful
 
-    def _handle_interrupt(self, signum, frame):
-        """Handle interrupts (Ctrl+C, Ctrl+\\, kill): save metadata and exit if recording."""
-        if not self.is_recording:
-            raise KeyboardInterrupt
-
-        logger.warning("\n[MainLogger] Interrupt detected. Stopping recording and marking episode as failed.")
-        self.interrupted = True
-        try:
-            self.stop_recording()
-        except Exception as e:
-            logger.error(f"Error during interrupt handling: {e}")
-        finally:
-            sys.exit(1)
-
     def on_exit(self):
+        # Check if exiting due to KeyboardInterrupt
+        if sys.exc_info()[0] is KeyboardInterrupt:
+            self._interrupted = True
         if self.is_recording:
             self.stop_recording()
 
@@ -200,9 +183,9 @@ class MainLogger:
 
     def _get_is_successful(self) -> Union[None, bool]:
         """Handle success setting based on configured mode."""
-        if self.interrupted:
-            self.interrupted = False
-            logger.info(f"[MainLogger] Episode {self.episode_idx} marked as failed due to interruption.")
+        # If interrupted by KeyboardInterrupt, automatically mark as failed
+        if self._interrupted:
+            logger.info(f"[MainLogger] Episode {self.episode_idx} marked as failed (interrupted).")
             return False
 
         if self.success_config.startswith("hardcode"):
@@ -212,7 +195,9 @@ class MainLogger:
             is_successful = self._prompt_for_success()
             logger.info(f"[MainLogger] Episode {self.episode_idx} marked as {'successful' if is_successful else 'failed'} (user input).")
         elif self.success_config == "none":
+            # if success_config was None, don't set is_successful
             is_successful = None
+            # logger.info("[MainLogger] Success mode is none, not setting is_successful. To set episode success manually, use set_successful(bool) method.")
             logger.info(f"[MainLogger] Episode {self.episode_idx} success unset.")
         else:
             raise ValueError(f"Invalid success_config: {self.success_config}")
@@ -222,16 +207,15 @@ class MainLogger:
     def _prompt_for_success(self):
         """Prompt user for episode success status."""
         if self.success_config.endswith("true"):
-            prompt = "Was this episode successful? [Y/n]: "
+            prompt = "Was this episode successful? (input might not show) [Y/n]: "
             default_response = "Y"
         else:
-            prompt = "Was this episode successful? [y/N]: "
+            prompt = "Was this episode successful? (input might not show) [y/N]: "
             default_response = "N"
 
         while True:
             try:
-                print(prompt, end='', flush=True)
-                user_input = sys.stdin.readline().strip()
+                user_input = input(prompt).strip()
 
                 # handle empty input (use default)
                 if not user_input:
@@ -245,10 +229,11 @@ class MainLogger:
                     logger.info("Episode marked as failed")
                     return False
                 else:
-                    print("Please enter 'y' for yes or 'n' for no.")
+                    logger.info("Please enter 'y' for yes or 'n' for no.")
             except (EOFError, KeyboardInterrupt):
-                logger.info("\nEpisode success status cancelled")
-                return None
+                # handle Ctrl+C or EOF - mark as failed by default
+                logger.info("\nEpisode interrupted - automatically marking as failed")
+                return False
 
     def _is_video_logger(self, name: str) -> bool:
         """Check if logger name matches CameraName enum pattern (indicates video logger)."""
