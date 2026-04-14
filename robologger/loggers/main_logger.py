@@ -18,8 +18,8 @@ class MainLogger:
     Args:
         success_config: Controls how episode success is determined after stop_recording():
             - "none": Does not set is_successful (no prompt, no value assigned)
-            - "input_true": Prompt user with [Y/n], defaults to successful
-            - "input_false": Prompt user with [y/N], defaults to failed
+            - "input_true": Prompt user with [y]/n, defaults to successful
+            - "input_false": Prompt user with y/[n], defaults to failed
             - "hardcode_true": Always mark episodes as successful (no prompt)
             - "hardcode_false": Always mark episodes as failed (no prompt)
     """
@@ -57,7 +57,7 @@ class MainLogger:
         self.morphology = morphology
         self.is_demonstration = is_demonstration
 
-        # validate video logger names
+        # validate video logger naming convention
         self._validate_video_logger_names()
 
         for logger_name, logger_endpoint in logger_endpoints.items():
@@ -209,10 +209,10 @@ class MainLogger:
     def _prompt_for_success(self):
         """Prompt user for episode success status."""
         if self.success_config.endswith("true"):
-            prompt = "Was this episode successful? (input might not show) [Y/n]: "
+            prompt = "Was this episode successful? (input might not show) [y]/n: "
             default_response = "Y"
         else:
-            prompt = "Was this episode successful? (input might not show) [y/N]: "
+            prompt = "Was this episode successful? (input might not show) y/[n]: "
             default_response = "N"
 
         while True:
@@ -303,7 +303,7 @@ class MainLogger:
         # prompt for confirmation (default: yes)
         try:
             while True:
-                response = input(f"Confirming deleting episode {self.last_episode_idx} at {episode_dir}? (input might not show) [Y/n]: ").strip().lower()
+                response = input(f"Confirming deleting episode {self.last_episode_idx} at {episode_dir}? (input might not show) [y]/n: ").strip().lower()
                 if response == '' or response in ['y', 'yes']:
                     break
                 elif response in ['n', 'no']:
@@ -323,29 +323,14 @@ class MainLogger:
         return deleted_idx
 
     def _validate_video_logger_names(self):
-        """Validate all video logger names for pattern compliance and zero-indexed continuity."""
-        video_loggers = {}  # {camera_base: [indices]}
-        pattern = re.compile(r'^(' + '|'.join(re.escape(cam.value) for cam in CameraName) + r')(\d+)$')
+        """Validate that any video logger name matches a CameraName base followed by a numeric index."""
+        bases = [cam.value for cam in CameraName]
+        valid_pattern = re.compile(r'^(' + '|'.join(re.escape(b) for b in bases) + r')(\d+)$')
 
-        # group video loggers by camera base name
         for logger_name in self.logger_endpoints.keys():
-            match = pattern.match(logger_name)
-            if match:
-                base_name, index = match.groups()
-                if base_name not in video_loggers:
-                    video_loggers[base_name] = []
-                video_loggers[base_name].append(int(index))
-
-        # validate zero-indexed continuity for each camera type
-        for base_name, indices in video_loggers.items():
-            indices.sort()
-            expected = list(range(len(indices)))
-            if indices != expected:
-                logger_names = [f"{base_name}{i}" for i in indices]
-                expected_names = [f"{base_name}{i}" for i in expected]
+            if any(logger_name.startswith(b) for b in bases) and not valid_pattern.match(logger_name):
                 raise ValueError(
-                    f"Multiple VideoLoggers of type '{base_name}' must use zero-indexed continuous naming.\n"
-                    f"Current loggers: {logger_names}\n"
-                    f"Expected naming sequence: {expected_names}\n"
-                    f"Please rename to follow continuous zero-indexing: {base_name}0, {base_name}1, {base_name}2, etc."
+                    f"VideoLogger name '{logger_name}' does not follow naming convention.\n"
+                    f"Expected '<camera_base><index>', e.g. {bases[0]}0, {bases[0]}1, ...\n"
+                    f"Valid camera bases: {bases}"
                 )

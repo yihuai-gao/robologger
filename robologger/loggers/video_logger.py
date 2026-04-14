@@ -20,8 +20,7 @@ class VideoLogger(BaseLogger):
     right_wrist_camera_2 - one VideoLogger for each iPhone on the same wrist.
     
     Naming Convention:
-    - Must use CameraName enum values with zero-indexed suffixes
-    - Multiple loggers of same enum type must use continuous zero-indexed naming
+    - Must use CameraName enum values
     """
     def __init__(
         self,

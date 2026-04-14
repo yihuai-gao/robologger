@@ -74,8 +74,8 @@ def main():
     # Initialize main logger
     # success_config options:
     #   - "none": Does not set is_successful (no prompt, no value assigned)
-    #   - "input_true": Prompt user with [Y/n], defaults to successful
-    #   - "input_false": Prompt user with [y/N], defaults to failed
+    #   - "input_true": Prompt user with [y]/n, defaults to successful
+    #   - "input_false": Prompt user with y/[n], defaults to failed
     #   - "hardcode_true": Always mark episodes as successful (no prompt)
     #   - "hardcode_false": Always mark episodes as failed (no prompt)
     main_logger = MainLogger(

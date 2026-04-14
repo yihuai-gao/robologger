@@ -239,7 +239,6 @@ Logger names must match enums defined in [robologger/utils/classes.py](../robolo
 **Camera names:**
 - Pattern: `{position}_{mount}_{index}`
 - Examples: `right_wrist_camera_0`, `head_camera_0`, `left_wrist_camera_1`
-- Must be continuous and zero-indexed
 
 **Robot component names:**
 - Arms: `right_arm`, `left_arm`
@@ -252,7 +251,7 @@ Set `success_config` in `MainLogger` to control how episodes are labeled:
 | Config | Behavior |
 |--------|----------|
 | `"none"` | No success field (field not included in metadata) |
-| `"input_true"` | Prompt user with `[Y/n]` (defaults to successful) |
-| `"input_false"` | Prompt user with `[y/N]` (defaults to failed) |
+| `"input_true"` | Prompt user with `[y]/n` (defaults to successful) |
+| `"input_false"` | Prompt user with `y/[n]` (defaults to failed) |
 | `"hardcode_true"` | Always mark successful (no prompt) |
 | `"hardcode_false"` | Always mark failed (no prompt) |
